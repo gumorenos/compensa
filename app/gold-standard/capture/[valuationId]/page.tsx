@@ -109,7 +109,7 @@ export default async function GoldStandardCapturePage({
 
             <div className="notice notice-warning" style={{ margin: 0 }}>
               <strong>La verdad experta se vuelve inmutable.</strong>
-              <span>Después de capturar podrás cambiar la partición, el estado de ancla y notas operativas permitidas, pero no el score, metodología, descriptivo ni decisiones expertas.</span>
+              <span>Después de capturar solo podrás cambiar la partición y el estado de ancla; el score, la metodología, el descriptivo, las decisiones, las evidencias y las notas de la referencia permanecerán congelados.</span>
             </div>
 
             <div className="form-actions">
