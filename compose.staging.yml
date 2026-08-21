@@ -83,7 +83,7 @@ services:
 
 networks:
   backend:
-    internal: true
+    driver: bridge
 
 volumes:
   compensa_pgdata:
