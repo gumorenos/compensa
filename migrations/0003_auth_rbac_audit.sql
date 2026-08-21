@@ -77,3 +77,19 @@ ALTER TABLE valuation_review_actions
 
 CREATE INDEX valuation_events_actor_idx ON valuation_events (actor_user_id);
 CREATE INDEX valuation_review_actions_actor_idx ON valuation_review_actions (actor_user_id);
+
+CREATE TABLE security_audit_events (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  organization_id uuid REFERENCES organizations(id) ON DELETE RESTRICT,
+  actor_user_id uuid REFERENCES auth_users(id) ON DELETE SET NULL,
+  action text NOT NULL,
+  resource_type text NOT NULL,
+  resource_id text,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX security_audit_events_org_idx
+  ON security_audit_events (organization_id, id);
+CREATE INDEX security_audit_events_actor_idx
+  ON security_audit_events (actor_user_id, id);
