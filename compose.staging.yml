@@ -59,6 +59,21 @@ services:
     networks:
       - backend
 
+  migrate:
+    profiles: ["ops"]
+    build:
+      context: .
+      target: tools
+    image: compensa-staging-tools:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    command: ["npm", "run", "db:migrate"]
+    networks:
+      - backend
+
   bootstrap:
     profiles: ["ops"]
     build:
