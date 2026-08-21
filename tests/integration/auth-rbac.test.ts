@@ -49,7 +49,7 @@ afterAll(async () => {
 });
 
 async function createAuthUser(email: string, name = "Test User") {
-  const bootstrapAuth = createCompensaAuth({ allowSignUp: true });
+  const bootstrapAuth = createCompensaAuth({ allowSignUp: true, database: pool });
   const { headers, response } = await bootstrapAuth.api.signUpEmail({
     returnHeaders: true,
     body: {
@@ -106,7 +106,7 @@ describe("authentication and RBAC", () => {
   });
 
   it("keeps public email sign-up disabled in the production auth configuration", async () => {
-    const lockedAuth = createCompensaAuth();
+    const lockedAuth = createCompensaAuth({ database: pool });
 
     await expect(
       lockedAuth.api.signUpEmail({
