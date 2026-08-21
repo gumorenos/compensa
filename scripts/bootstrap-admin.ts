@@ -65,7 +65,7 @@ try {
   let userResult = await pool.query("SELECT id FROM auth_users WHERE email = $1", [email]);
   let userId = userResult.rows[0]?.id as string | undefined;
   if (userId === undefined) {
-    const bootstrapAuth = createCompensaAuth({ allowSignUp: true });
+    const bootstrapAuth = createCompensaAuth({ allowSignUp: true, database: pool });
     await bootstrapAuth.api.signUpEmail({
       body: { name, email, password },
     });
