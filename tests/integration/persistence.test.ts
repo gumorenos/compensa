@@ -26,9 +26,11 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    `TRUNCATE valuation_review_actions, valuation_decision_evidence,
+    `TRUNCATE security_audit_events, organization_memberships,
+      valuation_review_actions, valuation_decision_evidence,
       valuation_events, valuation_decisions, valuations, job_description_versions,
-      methodology_versions, jobs, organizations RESTART IDENTITY CASCADE`,
+      methodology_versions, jobs, auth_sessions, auth_accounts, auth_verifications,
+      auth_users, organizations RESTART IDENTITY CASCADE`,
   );
 });
 
@@ -42,10 +44,11 @@ describe("PostgreSQL persistence", () => {
       "SELECT name, checksum FROM schema_migrations ORDER BY name",
     );
 
-    expect(result.rows).toHaveLength(2);
+    expect(result.rows).toHaveLength(3);
     expect(result.rows.map((row) => row.name)).toEqual([
       "0001_core.sql",
       "0002_descriptions_evidence_review.sql",
+      "0003_auth_rbac_audit.sql",
     ]);
     for (const row of result.rows) {
       expect(row.checksum).toMatch(/^[a-f0-9]{64}$/);
