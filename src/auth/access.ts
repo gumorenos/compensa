@@ -59,6 +59,7 @@ const rolePermissions: Record<OrganizationRole, ReadonlySet<Permission>> = {
 };
 
 type AccessGlobal = typeof globalThis & { __compensaAccessPool?: Pool };
+type MembershipQueryable = Pick<Pool, "query">;
 
 function accessPool(): Pool {
   const databaseUrl = process.env.DATABASE_URL;
@@ -74,8 +75,11 @@ export function roleHasPermission(role: OrganizationRole, permission: Permission
   return rolePermissions[role].has(permission);
 }
 
-export async function listMembershipsForUser(userId: string): Promise<MembershipSummary[]> {
-  const result = await accessPool().query(
+export async function listMembershipsForUser(
+  userId: string,
+  db: MembershipQueryable = accessPool(),
+): Promise<MembershipSummary[]> {
+  const result = await db.query(
     `SELECT
        m.organization_id,
        m.role,
