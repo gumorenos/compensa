@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import type { EvidenceSourceType } from "../persistence/database.js";
 import {
   appendSecurityAuditEvent,
-  attachActorToLatestReviewAction,
   getAppContext,
 } from "./runtime.js";
 
@@ -155,8 +154,8 @@ export async function submitForReviewAction(formData: FormData): Promise<void> {
     context.organization.id,
     valuationId,
     optionalText(formData, "comment"),
+    context.access.user.id,
   );
-  await attachActorToLatestReviewAction(context, valuationId, "SUBMITTED");
   await appendSecurityAuditEvent(context, "VALUATION_SUBMITTED", "VALUATION", valuationId);
   revalidatePath("/");
   revalidatePath(`/valuations/${valuationId}`);
@@ -169,8 +168,8 @@ export async function returnForChangesAction(formData: FormData): Promise<void> 
     context.organization.id,
     valuationId,
     requiredText(formData, "comment"),
+    context.access.user.id,
   );
-  await attachActorToLatestReviewAction(context, valuationId, "RETURNED");
   await appendSecurityAuditEvent(context, "VALUATION_RETURNED", "VALUATION", valuationId);
   revalidatePath("/");
   revalidatePath(`/valuations/${valuationId}`);
@@ -183,8 +182,8 @@ export async function approveValuationAction(formData: FormData): Promise<void> 
     context.organization.id,
     valuationId,
     optionalText(formData, "comment"),
+    context.access.user.id,
   );
-  await attachActorToLatestReviewAction(context, valuationId, "APPROVED");
   await appendSecurityAuditEvent(context, "VALUATION_APPROVED", "VALUATION", valuationId);
   revalidatePath("/");
   revalidatePath(`/valuations/${valuationId}`);
