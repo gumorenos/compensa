@@ -31,7 +31,7 @@ afterAll(async () => {
   await pool.end();
 });
 
-describe("concurrent valuation decisions", () => {
+describe("valuation workflow guards", () => {
   it("recalculates from the complete committed decision set after simultaneous edits", async () => {
     const organization = await repository.createOrganization({
       slug: "decision-concurrency",
@@ -80,5 +80,27 @@ describe("concurrent valuation decisions", () => {
     expect(final?.valuation.totalPoints).toBe(231);
     expect(final?.valuation.gradeCode).toBe("G3");
     expect(final?.decisions).toHaveLength(6);
+  });
+
+  it("does not start a valuation from a draft methodology version", async () => {
+    const organization = await repository.createOrganization({
+      slug: "draft-method",
+      name: "Draft Method Corp",
+      currencyCode: "PEN",
+    });
+    const job = await repository.createJob(organization.id, { name: "Analista" });
+    const methodology = await repository.createMethodologyVersion({
+      organizationId: organization.id,
+      definition: demoMethodology,
+      contentOwner: "Compensa demo",
+      status: "DRAFT",
+    });
+
+    await expect(
+      service.startValuation(organization.id, job.id, methodology.id),
+    ).rejects.toMatchObject({ code: "METHODOLOGY_NOT_ACTIVE" });
+
+    const count = await pool.query("SELECT count(*)::int AS count FROM valuations");
+    expect(count.rows[0]?.count).toBe(0);
   });
 });
