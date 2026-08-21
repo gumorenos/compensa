@@ -1,3 +1,5 @@
+import { resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { evaluateValuation, type ScoringResult } from "../domain/scoring-engine.js";
 import { demoMethodology } from "../fixtures/demo-methodology.js";
 import { ValuationService } from "../application/valuation-service.js";
@@ -68,7 +70,8 @@ function poolFromEnvironment(): Pool {
 
 async function ensureMigrations(pool: Pool): Promise<void> {
   const runtime = globalThis as RuntimeGlobal;
-  runtime.__compensaMigrated ??= runMigrations(pool);
+  const migrationsDirectory = pathToFileURL(`${resolve(process.cwd(), "migrations")}${sep}`);
+  runtime.__compensaMigrated ??= runMigrations(pool, migrationsDirectory);
   await runtime.__compensaMigrated;
 }
 
