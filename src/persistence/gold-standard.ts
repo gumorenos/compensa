@@ -278,6 +278,48 @@ export class GoldStandardRepository {
     );
   }
 
+  async validateCase(
+    organizationId: string,
+    caseId: string,
+    expectedTotalPoints: number,
+    expectedGradeCode: string,
+    db: Queryable = this.pool,
+  ): Promise<GoldStandardCase> {
+    if (!Number.isFinite(expectedTotalPoints)) {
+      throw new PersistenceError(
+        "GOLD_CASE_INVALID_POINTS",
+        "Gold Standard expected points must be finite.",
+      );
+    }
+    const gradeCode = expectedGradeCode.trim();
+    if (gradeCode === "") {
+      throw new PersistenceError(
+        "GOLD_CASE_GRADE_REQUIRED",
+        "Gold Standard expected grade is required before validation.",
+      );
+    }
+
+    const result = await db.query(
+      `UPDATE gold_standard_cases
+       SET status = 'VALIDATED',
+           expected_total_points = $3,
+           expected_grade_code = $4,
+           validated_at = now(),
+           updated_at = now()
+       WHERE id = $1 AND organization_id = $2 AND status = 'DRAFT'
+       RETURNING *`,
+      [caseId, organizationId, expectedTotalPoints, gradeCode],
+    );
+    const row = result.rows[0] as GoldStandardCaseRow | undefined;
+    if (row === undefined) {
+      throw new PersistenceError(
+        "GOLD_CASE_NOT_DRAFT",
+        "Gold Standard case was not found as an editable draft.",
+      );
+    }
+    return mapCase(row);
+  }
+
   async getCase(
     organizationId: string,
     caseId: string,
@@ -353,10 +395,8 @@ export class GoldStandardRepository {
   ): Promise<GoldStandardCaseBundle | null> {
     const goldCase = await this.getCase(organizationId, caseId, db);
     if (goldCase === null) return null;
-    const [decisions, evidence] = await Promise.all([
-      this.listDecisions(organizationId, caseId, db),
-      this.listEvidence(organizationId, caseId, db),
-    ]);
+    const decisions = await this.listDecisions(organizationId, caseId, db);
+    const evidence = await this.listEvidence(organizationId, caseId, db);
     return { case: goldCase, decisions, evidence };
   }
 
