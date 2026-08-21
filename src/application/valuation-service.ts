@@ -23,6 +23,23 @@ export class ValuationService {
     jobId: string,
     methodologyVersionId: string,
   ): Promise<Valuation> {
+    const methodology = await this.repository.getMethodologyVersionForOrganization(
+      organizationId,
+      methodologyVersionId,
+    );
+    if (methodology === null) {
+      throw new PersistenceError(
+        "METHODOLOGY_NOT_FOUND",
+        "Methodology version is not available to this organization.",
+      );
+    }
+    if (methodology.status !== "ACTIVE") {
+      throw new PersistenceError(
+        "METHODOLOGY_NOT_ACTIVE",
+        `Methodology version ${methodology.code} ${methodology.version} is not active.`,
+      );
+    }
+
     return this.repository.startValuation(organizationId, jobId, methodologyVersionId);
   }
 
