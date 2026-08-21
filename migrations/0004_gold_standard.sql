@@ -83,3 +83,136 @@ CREATE TABLE gold_standard_evidence (
 
 CREATE INDEX gold_standard_evidence_case_idx
   ON gold_standard_evidence (organization_id, case_id, decision_id);
+
+CREATE FUNCTION gold_standard_enforce_methodology_scope()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM methodology_versions methodology
+    WHERE methodology.id = NEW.methodology_version_id
+      AND (
+        methodology.organization_id IS NULL
+        OR methodology.organization_id = NEW.organization_id
+      )
+  ) THEN
+    RAISE EXCEPTION 'Gold Standard methodology is not available to this organization.'
+      USING ERRCODE = '23503';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER gold_standard_methodology_scope_trigger
+BEFORE INSERT OR UPDATE OF organization_id, methodology_version_id
+ON gold_standard_cases
+FOR EACH ROW
+EXECUTE FUNCTION gold_standard_enforce_methodology_scope();
+
+CREATE FUNCTION gold_standard_protect_validated_case()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF OLD.status <> 'DRAFT' AND (
+    NEW.organization_id IS DISTINCT FROM OLD.organization_id
+    OR NEW.case_code IS DISTINCT FROM OLD.case_code
+    OR NEW.source_type IS DISTINCT FROM OLD.source_type
+    OR NEW.source_valuation_id IS DISTINCT FROM OLD.source_valuation_id
+    OR NEW.methodology_version_id IS DISTINCT FROM OLD.methodology_version_id
+    OR NEW.job_description_version_id IS DISTINCT FROM OLD.job_description_version_id
+    OR NEW.job_snapshot IS DISTINCT FROM OLD.job_snapshot
+    OR NEW.methodology_snapshot IS DISTINCT FROM OLD.methodology_snapshot
+    OR NEW.description_snapshot IS DISTINCT FROM OLD.description_snapshot
+    OR NEW.expected_total_points IS DISTINCT FROM OLD.expected_total_points
+    OR NEW.expected_grade_code IS DISTINCT FROM OLD.expected_grade_code
+    OR NEW.expert_user_id IS DISTINCT FROM OLD.expert_user_id
+    OR NEW.created_by_user_id IS DISTINCT FROM OLD.created_by_user_id
+    OR NEW.validated_at IS DISTINCT FROM OLD.validated_at
+  ) THEN
+    RAISE EXCEPTION 'Validated Gold Standard reference fields are immutable.'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF OLD.status = 'ARCHIVED' AND NEW.status <> 'ARCHIVED' THEN
+    RAISE EXCEPTION 'Archived Gold Standard cases cannot be reactivated.'
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER gold_standard_case_immutability_trigger
+BEFORE UPDATE
+ON gold_standard_cases
+FOR EACH ROW
+EXECUTE FUNCTION gold_standard_protect_validated_case();
+
+CREATE FUNCTION gold_standard_protect_case_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF OLD.status <> 'DRAFT' THEN
+    RAISE EXCEPTION 'Validated or archived Gold Standard cases cannot be deleted.'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER gold_standard_case_delete_trigger
+BEFORE DELETE
+ON gold_standard_cases
+FOR EACH ROW
+EXECUTE FUNCTION gold_standard_protect_case_delete();
+
+CREATE FUNCTION gold_standard_protect_reference_detail()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  target_case_id uuid;
+  target_organization_id uuid;
+  target_status text;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    target_case_id := OLD.case_id;
+    target_organization_id := OLD.organization_id;
+  ELSE
+    target_case_id := NEW.case_id;
+    target_organization_id := NEW.organization_id;
+  END IF;
+
+  SELECT status
+    INTO target_status
+  FROM gold_standard_cases
+  WHERE id = target_case_id
+    AND organization_id = target_organization_id;
+
+  IF target_status IS NOT NULL AND target_status <> 'DRAFT' THEN
+    RAISE EXCEPTION 'Validated Gold Standard decisions and evidence are immutable.'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER gold_standard_decision_immutability_trigger
+BEFORE INSERT OR UPDATE OR DELETE
+ON gold_standard_decisions
+FOR EACH ROW
+EXECUTE FUNCTION gold_standard_protect_reference_detail();
+
+CREATE TRIGGER gold_standard_evidence_immutability_trigger
+BEFORE INSERT OR UPDATE OR DELETE
+ON gold_standard_evidence
+FOR EACH ROW
+EXECUTE FUNCTION gold_standard_protect_reference_detail();
