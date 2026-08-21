@@ -1,5 +1,5 @@
 CREATE TABLE auth_users (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   email text NOT NULL UNIQUE,
   email_verified boolean NOT NULL DEFAULT false,
@@ -9,7 +9,7 @@ CREATE TABLE auth_users (
 );
 
 CREATE TABLE auth_sessions (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
   token text NOT NULL UNIQUE,
   expires_at timestamptz NOT NULL,
@@ -23,7 +23,7 @@ CREATE INDEX auth_sessions_user_idx ON auth_sessions (user_id);
 CREATE INDEX auth_sessions_expires_idx ON auth_sessions (expires_at);
 
 CREATE TABLE auth_accounts (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
   account_id text NOT NULL,
   provider_id text NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE auth_accounts (
 CREATE INDEX auth_accounts_user_idx ON auth_accounts (user_id);
 
 CREATE TABLE auth_verifications (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   identifier text NOT NULL,
   value text NOT NULL,
   expires_at timestamptz NOT NULL,
@@ -54,7 +54,7 @@ CREATE INDEX auth_verifications_identifier_idx ON auth_verifications (identifier
 CREATE INDEX auth_verifications_expires_idx ON auth_verifications (expires_at);
 
 CREATE TABLE organization_memberships (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
   role text NOT NULL CHECK (role IN ('ADMIN', 'EVALUATOR', 'REVIEWER')),
