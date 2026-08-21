@@ -26,7 +26,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    `TRUNCATE valuation_events, valuation_decisions, valuations,
+    `TRUNCATE valuation_review_actions, valuation_decision_evidence,
+      valuation_events, valuation_decisions, valuations, job_description_versions,
       methodology_versions, jobs, organizations RESTART IDENTITY CASCADE`,
   );
 });
@@ -41,9 +42,14 @@ describe("PostgreSQL persistence", () => {
       "SELECT name, checksum FROM schema_migrations ORDER BY name",
     );
 
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]?.name).toBe("0001_core.sql");
-    expect(result.rows[0]?.checksum).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.map((row) => row.name)).toEqual([
+      "0001_core.sql",
+      "0002_descriptions_evidence_review.sql",
+    ]);
+    for (const row of result.rows) {
+      expect(row.checksum).toMatch(/^[a-f0-9]{64}$/);
+    }
   });
 
   it("persists a complete valuation and recalculates the deterministic result", async () => {
