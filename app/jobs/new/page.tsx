@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getAppContext } from "../../../src/web/runtime.js";
 import { createJobAction } from "../../../src/web/actions.js";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewJobPage() {
   await getAppContext("MANAGE_JOBS");
 
