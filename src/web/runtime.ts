@@ -8,9 +8,12 @@ import {
   createPool,
   runMigrations,
   type Job,
+  type JobDescriptionVersion,
   type MethodologyVersion,
   type Organization,
   type ValuationDecision,
+  type ValuationEvidence,
+  type ValuationReviewAction,
 } from "../persistence/database.js";
 import type { Pool } from "pg";
 
@@ -42,16 +45,25 @@ export interface JobListItem {
   valuationStatus: string | null;
 }
 
+export interface JobPageData {
+  context: DemoContext;
+  job: Job;
+  latestDescription: JobDescriptionVersion | null;
+}
+
 export interface ValuationPageData {
   organization: Organization;
   job: Job;
   methodology: MethodologyVersion;
+  description: JobDescriptionVersion | null;
   valuationId: string;
   valuationVersion: number;
   valuationStatus: string;
   totalPoints: number | null;
   gradeCode: string | null;
   decisions: ValuationDecision[];
+  evidence: ValuationEvidence[];
+  reviewActions: ValuationReviewAction[];
   scoring: ScoringResult | null;
 }
 
@@ -183,10 +195,15 @@ export async function listDemoJobs(): Promise<JobListItem[]> {
   }));
 }
 
-export async function getDemoJob(jobId: string): Promise<{ context: DemoContext; job: Job } | null> {
+export async function getDemoJob(jobId: string): Promise<JobPageData | null> {
   const context = await getDemoContext();
   const job = await context.repository.getJob(context.organization.id, jobId);
-  return job === null ? null : { context, job };
+  if (job === null) return null;
+  const latestDescription = await context.repository.getLatestJobDescription(
+    context.organization.id,
+    jobId,
+  );
+  return { context, job, latestDescription };
 }
 
 export async function getValuationPageData(valuationId: string): Promise<ValuationPageData | null> {
@@ -201,6 +218,22 @@ export async function getValuationPageData(valuationId: string): Promise<Valuati
   );
   if (job === null || methodology === null) return null;
 
+  const description =
+    snapshot.valuation.jobDescriptionVersionId === null
+      ? null
+      : await context.repository.getJobDescriptionVersion(
+          context.organization.id,
+          snapshot.valuation.jobDescriptionVersionId,
+        );
+  const evidence = await context.repository.listValuationEvidence(
+    context.organization.id,
+    valuationId,
+  );
+  const reviewActions = await context.repository.listReviewActions(
+    context.organization.id,
+    valuationId,
+  );
+
   let scoring: ScoringResult | null = null;
   if (snapshot.complete) {
     const selections = Object.fromEntries(
@@ -214,12 +247,15 @@ export async function getValuationPageData(valuationId: string): Promise<Valuati
     organization: context.organization,
     job,
     methodology,
+    description,
     valuationId: snapshot.valuation.id,
     valuationVersion: snapshot.valuation.version,
     valuationStatus: snapshot.valuation.status,
     totalPoints: snapshot.valuation.totalPoints,
     gradeCode: snapshot.valuation.gradeCode,
     decisions: snapshot.decisions,
+    evidence,
+    reviewActions,
     scoring,
   };
 }
