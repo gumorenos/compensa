@@ -111,6 +111,25 @@ ON gold_standard_cases
 FOR EACH ROW
 EXECUTE FUNCTION gold_standard_enforce_methodology_scope();
 
+CREATE FUNCTION gold_standard_require_draft_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.status <> 'DRAFT' THEN
+    RAISE EXCEPTION 'Gold Standard cases must be created as DRAFT before validation.'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER gold_standard_draft_insert_trigger
+BEFORE INSERT
+ON gold_standard_cases
+FOR EACH ROW
+EXECUTE FUNCTION gold_standard_require_draft_insert();
+
 CREATE FUNCTION gold_standard_protect_validated_case()
 RETURNS trigger
 LANGUAGE plpgsql
