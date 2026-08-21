@@ -78,6 +78,7 @@ export default async function JobPage({ params }: { params: Promise<{ jobId: str
                     id="sourceLabel"
                     name="sourceLabel"
                     type="text"
+                    defaultValue={latestDescription?.sourceLabel ?? ""}
                     placeholder="Ej. Descriptivo validado por Gerencia 2026"
                   />
                 </div>
@@ -88,6 +89,7 @@ export default async function JobPage({ params }: { params: Promise<{ jobId: str
                     name="content"
                     required
                     rows={14}
+                    defaultValue={latestDescription?.content ?? ""}
                     placeholder="Propósito del puesto, principales responsabilidades, alcance, relaciones, autoridad, requisitos..."
                   />
                 </div>
