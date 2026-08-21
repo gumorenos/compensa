@@ -1,0 +1,263 @@
+textarea,
+select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 88px;
+  line-height: 1.5;
+}
+
+textarea:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+  filter: none;
+}
+
+.section-head,
+.status-line,
+.support-head,
+.badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.badge-row {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.badge-review {
+  background: #e8ebf7;
+  color: #394d87;
+}
+
+.badge-evidence {
+  background: #e9f2f5;
+  color: #315d69;
+}
+
+.description-preview {
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  white-space: pre-wrap;
+  line-height: 1.65;
+  font-size: 14px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.description-preview.compact {
+  max-height: 320px;
+  margin-bottom: 0;
+}
+
+.details-block {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.details-block > summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 750;
+}
+
+.compact-stack {
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.callout,
+.readiness {
+  display: grid;
+  gap: 4px;
+  margin: 18px 0;
+  padding: 13px 14px;
+  border-radius: 11px;
+  background: var(--surface-muted);
+  font-size: 13px;
+}
+
+.callout span,
+.readiness span {
+  color: var(--muted);
+}
+
+.readiness.ready {
+  background: #e5f3eb;
+  color: var(--success);
+}
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: -8px 0 24px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.notice-warning {
+  background: #f8efdf;
+  color: var(--warning);
+}
+
+.notice-success {
+  background: #e5f3eb;
+  color: var(--success);
+}
+
+.valuation-layout {
+  grid-template-columns: minmax(0, 1fr) 330px;
+}
+
+.level-option.readonly {
+  cursor: default;
+}
+
+.level-option.readonly:hover {
+  border-color: var(--line);
+  background: white;
+}
+
+.level-option.readonly.selected:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.support-block {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcfc;
+}
+
+.support-head h3 {
+  margin-top: 4px;
+}
+
+.justification-text {
+  margin: 14px 0 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--primary);
+}
+
+.evidence-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.evidence-item {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  font-size: 13px;
+}
+
+.evidence-item blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8a3a36;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.support-editor {
+  margin-top: 14px;
+}
+
+.evidence-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.review-form {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.review-history {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.review-history h3 {
+  margin-bottom: 12px;
+}
+
+.review-event {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.review-event:last-child {
+  border-bottom: 0;
+}
+
+.review-event time {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.review-event p {
+  margin: 5px 0 0;
+  line-height: 1.45;
+}
+
+@media (max-width: 800px) {
+  .valuation-layout,
+  .evidence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-head,
+  .support-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .notice {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

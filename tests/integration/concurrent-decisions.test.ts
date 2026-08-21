@@ -22,7 +22,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    `TRUNCATE valuation_events, valuation_decisions, valuations,
+    `TRUNCATE valuation_review_actions, valuation_decision_evidence,
+      valuation_events, valuation_decisions, valuations, job_description_versions,
       methodology_versions, jobs, organizations RESTART IDENTITY CASCADE`,
   );
 });
