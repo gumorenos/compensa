@@ -30,7 +30,7 @@ export default async function GoldStandardPage() {
         </div>
       </div>
 
-      <div className="metadata card card-pad" style={{ marginBottom: 24 }}>
+      <dl className="metadata card card-pad" style={{ marginBottom: 24 }}>
         <div>
           <dt>Referencias</dt>
           <dd>{data.cases.length}</dd>
@@ -47,7 +47,7 @@ export default async function GoldStandardPage() {
           <dt>Anclas</dt>
           <dd>{anchorCount}</dd>
         </div>
-      </div>
+      </dl>
 
       <section className="card" style={{ marginBottom: 28 }}>
         <div className="card-pad section-head">
