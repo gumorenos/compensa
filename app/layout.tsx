@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SessionNav } from "./session-nav.js";
 import "./globals.css";
 import "./workflow.css";
 
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </Link>
             <nav className="nav" aria-label="Navegación principal">
               <Link href="/">Puestos</Link>
-              <Link href="/jobs/new" className="button button-small">Nuevo puesto</Link>
+              <SessionNav />
             </nav>
           </div>
         </header>
