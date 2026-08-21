@@ -25,6 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </Link>
             <nav className="nav" aria-label="Navegación principal">
               <Link href="/">Puestos</Link>
+              <Link href="/gold-standard">Gold Standard</Link>
               <SessionNav />
             </nav>
           </div>
