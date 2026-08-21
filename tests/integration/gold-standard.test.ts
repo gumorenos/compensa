@@ -269,6 +269,77 @@ describe("Gold Standard persistence", () => {
     ).rejects.toMatchObject({ code: "GOLD_CASE_NOT_FOUND" });
   });
 
+  it("blocks private methodologies from another tenant at the database boundary", async () => {
+    const organizationA = await repository.createOrganization({
+      slug: "gold-method-a",
+      name: "Gold Method A",
+      currencyCode: "PEN",
+    });
+    const organizationB = await repository.createOrganization({
+      slug: "gold-method-b",
+      name: "Gold Method B",
+      currencyCode: "PEN",
+    });
+    const methodologyA = await repository.createMethodologyVersion({
+      organizationId: organizationA.id,
+      definition: demoMethodology,
+      contentOwner: "Tenant A only",
+      status: "ACTIVE",
+    });
+
+    await expect(
+      pool.query(
+        `INSERT INTO gold_standard_cases (
+          organization_id, case_code, anonymized_label, source_type,
+          methodology_version_id, status, job_snapshot, methodology_snapshot
+        ) VALUES ($1, 'GS-CROSS', 'Cross tenant', 'IMPORT', $2, 'DRAFT', $3::jsonb, $4::jsonb)`,
+        [
+          organizationB.id,
+          methodologyA.id,
+          JSON.stringify({ code: null, name: "Puesto", department: null, area: null, jobFamily: null }),
+          JSON.stringify(demoMethodology),
+        ],
+      ),
+    ).rejects.toMatchObject({ code: "23503" });
+  });
+
+  it("locks validated reference fields, decisions and evidence in PostgreSQL", async () => {
+    const source = await createApprovedSource("gold-immutable");
+    const captured = await goldService.captureApprovedValuation(
+      source.organization.id,
+      source.valuation.id,
+      {
+        caseCode: "GS-LOCK",
+        anonymizedLabel: "Referencia bloqueada",
+      },
+    );
+
+    await expect(
+      pool.query(
+        "UPDATE gold_standard_cases SET expected_total_points = 999 WHERE id = $1",
+        [captured.case.id],
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+
+    const autonomy = captured.decisions.find((item) => item.dimensionCode === "AUTONOMY");
+    if (autonomy === undefined) throw new Error("Expected AUTONOMY reference decision.");
+    await expect(
+      pool.query(
+        "UPDATE gold_standard_decisions SET selected_level_code = 'A3' WHERE id = $1",
+        [autonomy.id],
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+
+    await expect(
+      pool.query("DELETE FROM gold_standard_cases WHERE id = $1", [captured.case.id]),
+    ).rejects.toMatchObject({ code: "23514" });
+
+    const reloaded = await goldService.getCase(source.organization.id, captured.case.id);
+    expect(reloaded?.case.expectedTotalPoints).toBe(231);
+    expect(reloaded?.decisions.find((item) => item.dimensionCode === "AUTONOMY")?.selectedLevelCode)
+      .toBe("A2");
+  });
+
   it("assigns validated cases to holdout without changing their expert result", async () => {
     const source = await createApprovedSource("gold-holdout");
     const captured = await goldService.captureApprovedValuation(
