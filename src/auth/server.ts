@@ -3,6 +3,7 @@ import { Pool } from "pg";
 
 export interface CompensaAuthOptions {
   allowSignUp?: boolean;
+  database?: Pool;
 }
 
 function requireEnvironment(name: "DATABASE_URL" | "BETTER_AUTH_SECRET"): string {
@@ -22,7 +23,7 @@ export function createCompensaAuth(options: CompensaAuthOptions = {}) {
     appName: "Compensa",
     baseURL,
     secret,
-    database: new Pool({ connectionString: databaseUrl, max: 5 }),
+    database: options.database ?? new Pool({ connectionString: databaseUrl, max: 5 }),
     emailAndPassword: {
       enabled: true,
       disableSignUp: options.allowSignUp !== true,
