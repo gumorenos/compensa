@@ -1,14 +1,17 @@
 import Link from "next/link";
+import { getAppContext } from "../../../src/web/runtime.js";
 import { createJobAction } from "../../../src/web/actions.js";
 
-export default function NewJobPage() {
+export default async function NewJobPage() {
+  await getAppContext("MANAGE_JOBS");
+
   return (
     <>
       <div className="page-head">
         <div>
           <span className="eyebrow">Puestos</span>
           <h1>Nuevo puesto</h1>
-          <p className="muted">Registra los datos mínimos. El descriptivo de puesto se incorporará en un siguiente incremento.</p>
+          <p className="muted">Registra los datos base y luego incorpora su descriptivo versionado.</p>
         </div>
       </div>
 
