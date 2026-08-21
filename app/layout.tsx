@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SessionNav } from "./session-nav.js";
 import "./globals.css";
 import "./workflow.css";
+import "./auth.css";
 
 export const metadata: Metadata = {
   title: "Compensa",
