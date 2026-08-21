@@ -170,23 +170,16 @@ ON gold_standard_cases
 FOR EACH ROW
 EXECUTE FUNCTION gold_standard_protect_case_delete();
 
-CREATE FUNCTION gold_standard_protect_reference_detail()
-RETURNS trigger
+CREATE FUNCTION gold_standard_require_draft_parent(
+  target_case_id uuid,
+  target_organization_id uuid
+)
+RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  target_case_id uuid;
-  target_organization_id uuid;
   target_status text;
 BEGIN
-  IF TG_OP = 'DELETE' THEN
-    target_case_id := OLD.case_id;
-    target_organization_id := OLD.organization_id;
-  ELSE
-    target_case_id := NEW.case_id;
-    target_organization_id := NEW.organization_id;
-  END IF;
-
   SELECT status
     INTO target_status
   FROM gold_standard_cases
@@ -197,11 +190,27 @@ BEGIN
     RAISE EXCEPTION 'Validated Gold Standard decisions and evidence are immutable.'
       USING ERRCODE = '23514';
   END IF;
+END;
+$$;
 
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
+CREATE FUNCTION gold_standard_protect_reference_detail()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM gold_standard_require_draft_parent(NEW.case_id, NEW.organization_id);
+    RETURN NEW;
   END IF;
-  RETURN NEW;
+
+  PERFORM gold_standard_require_draft_parent(OLD.case_id, OLD.organization_id);
+
+  IF TG_OP = 'UPDATE' THEN
+    PERFORM gold_standard_require_draft_parent(NEW.case_id, NEW.organization_id);
+    RETURN NEW;
+  END IF;
+
+  RETURN OLD;
 END;
 $$;
 
