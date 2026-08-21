@@ -10,6 +10,7 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "db:migrate": "tsx scripts/migrate.ts",
     "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "test": "vitest run tests/scoring-engine.test.ts",
     "test:integration": "vitest run tests/integration --maxWorkers=1",
