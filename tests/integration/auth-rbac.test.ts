@@ -148,7 +148,7 @@ describe("authentication and RBAC", () => {
     await addMembership(inactiveOrg.id, user.id, "ADMIN");
     await pool.query("UPDATE organizations SET status = 'INACTIVE' WHERE id = $1", [inactiveOrg.id]);
 
-    expect(await listMembershipsForUser(user.id)).toEqual([
+    expect(await listMembershipsForUser(user.id, pool)).toEqual([
       {
         organizationId: activeOrg.id,
         organizationSlug: "active-org",
