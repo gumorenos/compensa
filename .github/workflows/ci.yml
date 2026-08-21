@@ -44,3 +44,45 @@ jobs:
         run: npm test
       - name: PostgreSQL integration tests
         run: npm run test:integration
+      - name: Validate staging Compose file
+        env:
+          POSTGRES_PASSWORD: compensa
+          COMPENSA_ADMIN_EMAIL: admin@example.com
+          COMPENSA_ADMIN_PASSWORD: ci-only-admin-password
+        run: >-
+          docker compose -f compose.staging.yml --profile ops config >/dev/null
+      - name: Build staging image
+        run: docker build --target runner -t compensa-ci:latest .
+      - name: Smoke-test staging container
+        shell: bash
+        run: |
+          set -euo pipefail
+          cid="$(docker run -d \
+            --network host \
+            --read-only \
+            --tmpfs /tmp \
+            --tmpfs /app/.next/cache \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
+            -e BETTER_AUTH_URL="http://127.0.0.1:3200" \
+            -e PORT=3200 \
+            -e HOSTNAME=0.0.0.0 \
+            compensa-ci:latest)"
+          trap 'docker logs "$cid" || true; docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+
+          health=""
+          for _ in $(seq 1 30); do
+            health="$(curl -sS -o /tmp/compensa-health.json -w '%{http_code}' http://127.0.0.1:3200/api/health || true)"
+            if [ "$health" = "200" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          test "$health" = "200"
+          grep -q '"status":"ok"' /tmp/compensa-health.json
+
+          root_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3200/)"
+          test "$root_status" = "307"
