@@ -60,16 +60,22 @@ export class GoldStandardService {
       const valuation = await this.core.getValuation(organizationId, valuationId, client);
       requireApprovedValuation(valuation);
 
-      const [job, methodology, decisions, evidence] = await Promise.all([
-        this.core.getJob(organizationId, valuation.jobId, client),
-        this.core.getMethodologyVersionForOrganization(
-          organizationId,
-          valuation.methodologyVersionId,
-          client,
-        ),
-        this.core.listValuationDecisions(organizationId, valuation.id, client),
-        this.core.listValuationEvidence(organizationId, valuation.id, client),
-      ]);
+      const job = await this.core.getJob(organizationId, valuation.jobId, client);
+      const methodology = await this.core.getMethodologyVersionForOrganization(
+        organizationId,
+        valuation.methodologyVersionId,
+        client,
+      );
+      const decisions = await this.core.listValuationDecisions(
+        organizationId,
+        valuation.id,
+        client,
+      );
+      const evidence = await this.core.listValuationEvidence(
+        organizationId,
+        valuation.id,
+        client,
+      );
 
       if (job === null) {
         throw new PersistenceError("JOB_NOT_FOUND", "Approved valuation references no available job.");
@@ -119,7 +125,7 @@ export class GoldStandardService {
         );
       }
 
-      const goldCase = await this.gold.createCase(
+      const draftCase = await this.gold.createCase(
         {
           organizationId,
           caseCode: input.caseCode,
@@ -128,18 +134,15 @@ export class GoldStandardService {
           sourceValuationId: valuation.id,
           methodologyVersionId: methodology.id,
           jobDescriptionVersionId: description?.id ?? null,
-          status: "VALIDATED",
+          status: "DRAFT",
           partition: input.partition ?? "UNASSIGNED",
           isAnchor: input.isAnchor ?? false,
           jobSnapshot: snapshotJob(job),
           methodologySnapshot: methodology.definition,
           descriptionSnapshot: description?.content ?? null,
-          expectedTotalPoints: scoring.points,
-          expectedGradeCode: scoring.grade.code,
           expertUserId: input.expertUserId ?? null,
           createdByUserId: input.createdByUserId ?? null,
           notes: input.notes ?? null,
-          validatedAt: new Date(),
         },
         client,
       );
@@ -149,7 +152,7 @@ export class GoldStandardService {
         const copied = await this.gold.createDecision(
           {
             organizationId,
-            caseId: goldCase.id,
+            caseId: draftCase.id,
             dimensionCode: decision.dimensionCode,
             selectedLevelCode: decision.selectedLevelCode,
             justification: decision.justification,
@@ -170,7 +173,7 @@ export class GoldStandardService {
         await this.gold.createEvidence(
           {
             organizationId,
-            caseId: goldCase.id,
+            caseId: draftCase.id,
             decisionId: goldDecisionId,
             sourceType: item.sourceType,
             sourceSection: item.sourceSection,
@@ -180,7 +183,15 @@ export class GoldStandardService {
         );
       }
 
-      const bundle = await this.gold.getCaseBundle(organizationId, goldCase.id, client);
+      await this.gold.validateCase(
+        organizationId,
+        draftCase.id,
+        scoring.points,
+        scoring.grade.code,
+        client,
+      );
+
+      const bundle = await this.gold.getCaseBundle(organizationId, draftCase.id, client);
       if (bundle === null) {
         throw new PersistenceError(
           "DATABASE_INVARIANT",
