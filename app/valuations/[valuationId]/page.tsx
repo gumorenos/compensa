@@ -51,8 +51,11 @@ export default async function ValuationPage({
     return justification !== null && justification !== undefined && justification.trim() !== "";
   }).length;
   const progress = requiredCount === 0 ? 100 : Math.round((completedRequired / requiredCount) * 100);
-  const editable = data.valuationStatus === "DRAFT" || data.valuationStatus === "RETURNED";
+  const statusEditable = data.valuationStatus === "DRAFT" || data.valuationStatus === "RETURNED";
+  const editable = statusEditable && data.capabilities.canEvaluate;
+  const canSubmit = statusEditable && data.capabilities.canSubmitReview;
   const inReview = data.valuationStatus === "IN_REVIEW";
+  const canReview = inReview && data.capabilities.canReview;
   const approved = data.valuationStatus === "APPROVED";
   const readyForReview =
     data.totalPoints !== null &&
@@ -91,6 +94,13 @@ export default async function ValuationPage({
         <div className="notice notice-warning">
           <strong>Devuelta para cambios.</strong>
           <span>{lastReturn.comment}</span>
+        </div>
+      )}
+
+      {statusEditable && !data.capabilities.canEvaluate && (
+        <div className="notice">
+          <strong>Modo lectura.</strong>
+          <span>Tu rol puede consultar esta valoración, pero no editar sus decisiones.</span>
         </div>
       )}
 
@@ -291,10 +301,7 @@ export default async function ValuationPage({
               <li><strong>Justificadas:</strong> {justifiedRequired}/{requiredCount}</li>
               <li><strong>Puntos:</strong> {data.totalPoints ?? "Pendiente"}</li>
               <li><strong>Metodología:</strong> {data.methodology.version}</li>
-              <li>
-                <strong>Descriptivo:</strong>{" "}
-                {data.description === null ? "Sin versión asociada" : `v${data.description.version}`}
-              </li>
+              <li><strong>Descriptivo:</strong> {data.description === null ? "Sin versión asociada" : `v${data.description.version}`}</li>
             </ul>
             <div className="form-actions">
               <Link href={`/jobs/${data.job.id}`} className="button button-secondary">Ver puesto</Link>
@@ -322,48 +329,52 @@ export default async function ValuationPage({
           <section className="card card-pad">
             <span className="eyebrow">Workflow</span>
             <h2 style={{ marginTop: 6 }}>Revisión y aprobación</h2>
-            {editable && (
+
+            {statusEditable && (
               <>
-                <p className="muted">
-                  Para enviar a revisión se requieren todos los niveles obligatorios y una justificación por dimensión.
-                </p>
                 <div className={`readiness ${readyForReview ? "ready" : ""}`}>
                   <strong>{readyForReview ? "Lista para revisión" : "Aún no está lista"}</strong>
                   <span>{completedRequired}/{requiredCount} niveles · {justifiedRequired}/{requiredCount} justificaciones</span>
                 </div>
-                <form action={submitForReviewAction} className="stack compact-stack">
-                  <input type="hidden" name="valuationId" value={data.valuationId} />
-                  <div className="field">
-                    <label htmlFor="submit-comment">Comentario al revisor</label>
-                    <textarea id="submit-comment" name="comment" rows={3} placeholder="Opcional" />
-                  </div>
-                  <button className="button" type="submit" disabled={!readyForReview}>Enviar a revisión</button>
-                </form>
+                {canSubmit ? (
+                  <form action={submitForReviewAction} className="stack compact-stack">
+                    <input type="hidden" name="valuationId" value={data.valuationId} />
+                    <div className="field">
+                      <label htmlFor="submit-comment">Comentario al revisor</label>
+                      <textarea id="submit-comment" name="comment" rows={3} placeholder="Opcional" />
+                    </div>
+                    <button className="button" type="submit" disabled={!readyForReview}>Enviar a revisión</button>
+                  </form>
+                ) : (
+                  <p className="muted">Tu rol no puede enviar valoraciones a revisión.</p>
+                )}
               </>
             )}
 
             {inReview && (
-              <>
-                <p className="muted">
-                  Revisión demo sin roles todavía. En el siguiente bloque de autenticación estas acciones se restringirán por permisos.
-                </p>
-                <form action={approveValuationAction} className="stack compact-stack review-form">
-                  <input type="hidden" name="valuationId" value={data.valuationId} />
-                  <div className="field">
-                    <label htmlFor="approve-comment">Comentario de aprobación</label>
-                    <textarea id="approve-comment" name="comment" rows={3} placeholder="Opcional" />
-                  </div>
-                  <button className="button" type="submit">Aprobar valoración</button>
-                </form>
-                <form action={returnForChangesAction} className="stack compact-stack review-form">
-                  <input type="hidden" name="valuationId" value={data.valuationId} />
-                  <div className="field">
-                    <label htmlFor="return-comment">Motivo de devolución *</label>
-                    <textarea id="return-comment" name="comment" rows={3} required />
-                  </div>
-                  <button className="button button-secondary" type="submit">Devolver para cambios</button>
-                </form>
-              </>
+              canReview ? (
+                <>
+                  <p className="muted">Como revisor puedes aprobar o devolver; las decisiones permanecen bloqueadas durante la revisión.</p>
+                  <form action={approveValuationAction} className="stack compact-stack review-form">
+                    <input type="hidden" name="valuationId" value={data.valuationId} />
+                    <div className="field">
+                      <label htmlFor="approve-comment">Comentario de aprobación</label>
+                      <textarea id="approve-comment" name="comment" rows={3} placeholder="Opcional" />
+                    </div>
+                    <button className="button" type="submit">Aprobar valoración</button>
+                  </form>
+                  <form action={returnForChangesAction} className="stack compact-stack review-form">
+                    <input type="hidden" name="valuationId" value={data.valuationId} />
+                    <div className="field">
+                      <label htmlFor="return-comment">Motivo de devolución *</label>
+                      <textarea id="return-comment" name="comment" rows={3} required />
+                    </div>
+                    <button className="button button-secondary" type="submit">Devolver para cambios</button>
+                  </form>
+                </>
+              ) : (
+                <p className="muted">La valoración está en revisión. Tu rol no puede aprobarla ni devolverla.</p>
+              )
             )}
 
             {approved && <p className="muted">La aprobación cerró la edición de esta versión.</p>}
@@ -375,6 +386,9 @@ export default async function ValuationPage({
                   <div className="review-event" key={item.id}>
                     <strong>{item.action}</strong>
                     <time>{item.createdAt.toLocaleString("es-PE")}</time>
+                    {item.actor !== null && (
+                      <div className="review-actor">{item.actor.name} · {item.actor.email}</div>
+                    )}
                     {item.comment !== null && <p>{item.comment}</p>}
                   </div>
                 ))}
