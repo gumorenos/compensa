@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { EvidenceSourceType } from "../persistence/database.js";
-import { getDemoContext } from "./runtime.js";
+import {
+  appendSecurityAuditEvent,
+  getAppContext,
+} from "./runtime.js";
 
 function requiredText(formData: FormData, field: string): string {
   const value = formData.get(field);
@@ -29,7 +32,7 @@ function evidenceSource(formData: FormData): EvidenceSourceType {
 }
 
 export async function createJobAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("MANAGE_JOBS");
   const job = await context.repository.createJob(context.organization.id, {
     name: requiredText(formData, "name"),
     code: optionalText(formData, "code"),
@@ -37,24 +40,36 @@ export async function createJobAction(formData: FormData): Promise<void> {
     area: optionalText(formData, "area"),
     jobFamily: optionalText(formData, "jobFamily"),
   });
+  await appendSecurityAuditEvent(context, "JOB_CREATED", "JOB", job.id, { name: job.name });
 
   revalidatePath("/");
   redirect(`/jobs/${job.id}`);
 }
 
 export async function saveJobDescriptionAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("MANAGE_JOBS");
   const jobId = requiredText(formData, "jobId");
-  await context.repository.createJobDescriptionVersion(context.organization.id, jobId, {
-    content: requiredText(formData, "content"),
-    sourceLabel: optionalText(formData, "sourceLabel"),
-  });
+  const description = await context.repository.createJobDescriptionVersion(
+    context.organization.id,
+    jobId,
+    {
+      content: requiredText(formData, "content"),
+      sourceLabel: optionalText(formData, "sourceLabel"),
+    },
+  );
+  await appendSecurityAuditEvent(
+    context,
+    "JOB_DESCRIPTION_VERSION_CREATED",
+    "JOB_DESCRIPTION",
+    description.id,
+    { jobId, version: description.version },
+  );
 
   revalidatePath(`/jobs/${jobId}`);
 }
 
 export async function startValuationAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("EVALUATE");
   const jobId = requiredText(formData, "jobId");
   const methodologyVersionId = requiredText(formData, "methodologyVersionId");
   const valuation = await context.service.startValuation(
@@ -62,6 +77,11 @@ export async function startValuationAction(formData: FormData): Promise<void> {
     jobId,
     methodologyVersionId,
   );
+  await appendSecurityAuditEvent(context, "VALUATION_STARTED", "VALUATION", valuation.id, {
+    jobId,
+    methodologyVersionId,
+    version: valuation.version,
+  });
 
   revalidatePath("/");
   revalidatePath(`/jobs/${jobId}`);
@@ -69,12 +89,18 @@ export async function startValuationAction(formData: FormData): Promise<void> {
 }
 
 export async function saveDecisionAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("EVALUATE");
   const valuationId = requiredText(formData, "valuationId");
+  const dimensionCode = requiredText(formData, "dimensionCode");
+  const selectedLevelCode = requiredText(formData, "selectedLevelCode");
   await context.service.saveDecision(context.organization.id, valuationId, {
-    dimensionCode: requiredText(formData, "dimensionCode"),
-    selectedLevelCode: requiredText(formData, "selectedLevelCode"),
+    dimensionCode,
+    selectedLevelCode,
     source: "MANUAL",
+  });
+  await appendSecurityAuditEvent(context, "VALUATION_DECISION_SAVED", "VALUATION", valuationId, {
+    dimensionCode,
+    selectedLevelCode,
   });
 
   revalidatePath("/");
@@ -82,70 +108,83 @@ export async function saveDecisionAction(formData: FormData): Promise<void> {
 }
 
 export async function saveDecisionSupportAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("EVALUATE");
   const valuationId = requiredText(formData, "valuationId");
+  const dimensionCode = requiredText(formData, "dimensionCode");
   const excerpt = optionalText(formData, "evidenceExcerpt");
+  const sourceType = excerpt === null ? null : evidenceSource(formData);
 
   await context.service.saveDecisionSupport(context.organization.id, valuationId, {
-    dimensionCode: requiredText(formData, "dimensionCode"),
+    dimensionCode,
     justification: optionalText(formData, "justification"),
-    ...(excerpt === null
+    ...(excerpt === null || sourceType === null
       ? {}
       : {
           evidence: {
-            sourceType: evidenceSource(formData),
+            sourceType,
             sourceSection: optionalText(formData, "evidenceSection"),
             excerpt,
           },
         }),
+  });
+  await appendSecurityAuditEvent(context, "VALUATION_SUPPORT_SAVED", "VALUATION", valuationId, {
+    dimensionCode,
+    evidenceAdded: excerpt !== null,
+    evidenceSourceType: sourceType,
   });
 
   revalidatePath(`/valuations/${valuationId}`);
 }
 
 export async function deleteEvidenceAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("EVALUATE");
   const valuationId = requiredText(formData, "valuationId");
-  await context.service.deleteEvidence(
-    context.organization.id,
-    valuationId,
-    requiredText(formData, "evidenceId"),
-  );
+  const evidenceId = requiredText(formData, "evidenceId");
+  await context.service.deleteEvidence(context.organization.id, valuationId, evidenceId);
+  await appendSecurityAuditEvent(context, "VALUATION_EVIDENCE_REMOVED", "VALUATION", valuationId, {
+    evidenceId,
+  });
   revalidatePath(`/valuations/${valuationId}`);
 }
 
 export async function submitForReviewAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("SUBMIT_REVIEW");
   const valuationId = requiredText(formData, "valuationId");
   await context.service.submitForReview(
     context.organization.id,
     valuationId,
     optionalText(formData, "comment"),
+    context.access.user.id,
   );
+  await appendSecurityAuditEvent(context, "VALUATION_SUBMITTED", "VALUATION", valuationId);
   revalidatePath("/");
   revalidatePath(`/valuations/${valuationId}`);
 }
 
 export async function returnForChangesAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("REVIEW");
   const valuationId = requiredText(formData, "valuationId");
   await context.service.returnForChanges(
     context.organization.id,
     valuationId,
     requiredText(formData, "comment"),
+    context.access.user.id,
   );
+  await appendSecurityAuditEvent(context, "VALUATION_RETURNED", "VALUATION", valuationId);
   revalidatePath("/");
   revalidatePath(`/valuations/${valuationId}`);
 }
 
 export async function approveValuationAction(formData: FormData): Promise<void> {
-  const context = await getDemoContext();
+  const context = await getAppContext("REVIEW");
   const valuationId = requiredText(formData, "valuationId");
   await context.service.approve(
     context.organization.id,
     valuationId,
     optionalText(formData, "comment"),
+    context.access.user.id,
   );
+  await appendSecurityAuditEvent(context, "VALUATION_APPROVED", "VALUATION", valuationId);
   revalidatePath("/");
   revalidatePath(`/valuations/${valuationId}`);
 }

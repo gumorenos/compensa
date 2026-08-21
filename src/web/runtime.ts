@@ -1,8 +1,15 @@
 import { resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { Pool } from "pg";
+import { ValuationService } from "../application/valuation-service.js";
+import {
+  requireRequestAccess,
+  roleHasPermission,
+  type AccessContext,
+  type Permission,
+} from "../auth/access.js";
 import { evaluateValuation, type ScoringResult } from "../domain/scoring-engine.js";
 import { demoMethodology } from "../fixtures/demo-methodology.js";
-import { ValuationService } from "../application/valuation-service.js";
 import {
   CompensaRepository,
   createPool,
@@ -13,23 +20,29 @@ import {
   type Organization,
   type ValuationDecision,
   type ValuationEvidence,
-  type ValuationReviewAction,
 } from "../persistence/database.js";
-import type { Pool } from "pg";
-
-const DEMO_SLUG = "compensa-demo";
 
 type RuntimeGlobal = typeof globalThis & {
   __compensaPool?: Pool;
   __compensaMigrated?: Promise<void>;
 };
 
-export interface DemoContext {
+export interface AppCapabilities {
+  canManageJobs: boolean;
+  canEvaluate: boolean;
+  canSubmitReview: boolean;
+  canReview: boolean;
+  canManageMembers: boolean;
+}
+
+export interface AppContext {
   organization: Organization;
   methodology: MethodologyVersion;
   repository: CompensaRepository;
   service: ValuationService;
   pool: Pool;
+  access: AccessContext;
+  capabilities: AppCapabilities;
 }
 
 export interface JobListItem {
@@ -46,9 +59,23 @@ export interface JobListItem {
 }
 
 export interface JobPageData {
-  context: DemoContext;
+  context: AppContext;
   job: Job;
   latestDescription: JobDescriptionVersion | null;
+}
+
+export interface ReviewActionView {
+  id: string;
+  organizationId: string;
+  valuationId: string;
+  action: "SUBMITTED" | "RETURNED" | "APPROVED";
+  comment: string | null;
+  createdAt: Date;
+  actor: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 }
 
 export interface ValuationPageData {
@@ -63,8 +90,9 @@ export interface ValuationPageData {
   gradeCode: string | null;
   decisions: ValuationDecision[];
   evidence: ValuationEvidence[];
-  reviewActions: ValuationReviewAction[];
+  reviewActions: ReviewActionView[];
   scoring: ScoringResult | null;
+  capabilities: AppCapabilities;
 }
 
 function poolFromEnvironment(): Pool {
@@ -87,39 +115,31 @@ async function ensureMigrations(pool: Pool): Promise<void> {
   await runtime.__compensaMigrated;
 }
 
-export async function getDemoContext(): Promise<DemoContext> {
+function capabilitiesFor(access: AccessContext): AppCapabilities {
+  return {
+    canManageJobs: roleHasPermission(access.role, "MANAGE_JOBS"),
+    canEvaluate: roleHasPermission(access.role, "EVALUATE"),
+    canSubmitReview: roleHasPermission(access.role, "SUBMIT_REVIEW"),
+    canReview: roleHasPermission(access.role, "REVIEW"),
+    canManageMembers: roleHasPermission(access.role, "MANAGE_MEMBERS"),
+  };
+}
+
+export async function getAppContext(permission: Permission = "VIEW"): Promise<AppContext> {
   const pool = poolFromEnvironment();
   await ensureMigrations(pool);
+  const access = await requireRequestAccess(permission);
   const repository = new CompensaRepository(pool);
   const service = new ValuationService(repository);
+  const organization = await repository.getOrganization(access.organization.id);
+  if (organization === null || organization.status !== "ACTIVE") {
+    throw new Error("The active organization is not available.");
+  }
 
-  const { organization, methodology } = await repository.transaction(async (client) => {
+  const methodology = await repository.transaction(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
-      "compensa-demo-bootstrap",
+      `compensa-methodology-bootstrap:${organization.id}`,
     ]);
-
-    const organizationLookup = await client.query(
-      "SELECT id FROM organizations WHERE slug = $1",
-      [DEMO_SLUG],
-    );
-    const organizationId = organizationLookup.rows[0]?.id as string | undefined;
-    const organization =
-      organizationId === undefined
-        ? await repository.createOrganization(
-            {
-              slug: DEMO_SLUG,
-              name: "Compensa Demo",
-              countryCode: "PE",
-              currencyCode: "PEN",
-            },
-            client,
-          )
-        : await repository.getOrganization(organizationId, client);
-
-    if (organization === null) {
-      throw new Error("Demo organization bootstrap failed.");
-    }
-
     const methodologyLookup = await client.query(
       `SELECT id FROM methodology_versions
        WHERE organization_id = $1 AND code = $2 AND version = $3
@@ -127,7 +147,7 @@ export async function getDemoContext(): Promise<DemoContext> {
       [organization.id, demoMethodology.code, demoMethodology.version],
     );
     const methodologyId = methodologyLookup.rows[0]?.id as string | undefined;
-    const methodology =
+    const value =
       methodologyId === undefined
         ? await repository.createMethodologyVersion(
             {
@@ -143,19 +163,69 @@ export async function getDemoContext(): Promise<DemoContext> {
             methodologyId,
             client,
           );
-
-    if (methodology === null) {
-      throw new Error("Demo methodology bootstrap failed.");
+    if (value === null) {
+      throw new Error("Methodology bootstrap failed for the active organization.");
     }
-
-    return { organization, methodology };
+    return value;
   });
 
-  return { organization, methodology, repository, service, pool };
+  return {
+    organization,
+    methodology,
+    repository,
+    service,
+    pool,
+    access,
+    capabilities: capabilitiesFor(access),
+  };
+}
+
+export async function appendSecurityAuditEvent(
+  context: AppContext,
+  action: string,
+  resourceType: string,
+  resourceId: string | null,
+  payload: Record<string, unknown> = {},
+): Promise<void> {
+  await context.pool.query(
+    `INSERT INTO security_audit_events
+      (organization_id, actor_user_id, action, resource_type, resource_id, payload)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+    [
+      context.organization.id,
+      context.access.user.id,
+      action,
+      resourceType,
+      resourceId,
+      JSON.stringify(payload),
+    ],
+  );
+}
+
+export async function attachActorToLatestReviewAction(
+  context: AppContext,
+  valuationId: string,
+  action: "SUBMITTED" | "RETURNED" | "APPROVED",
+): Promise<void> {
+  await context.pool.query(
+    `UPDATE valuation_review_actions
+     SET actor_user_id = $3
+     WHERE id = (
+       SELECT id
+       FROM valuation_review_actions
+       WHERE organization_id = $1
+         AND valuation_id = $2
+         AND action = $4
+         AND actor_user_id IS NULL
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1
+     )`,
+    [context.organization.id, valuationId, context.access.user.id, action],
+  );
 }
 
 export async function listDemoJobs(): Promise<JobListItem[]> {
-  const context = await getDemoContext();
+  const context = await getAppContext("VIEW");
   const result = await context.pool.query(
     `SELECT
        j.id,
@@ -196,7 +266,7 @@ export async function listDemoJobs(): Promise<JobListItem[]> {
 }
 
 export async function getDemoJob(jobId: string): Promise<JobPageData | null> {
-  const context = await getDemoContext();
+  const context = await getAppContext("VIEW");
   const job = await context.repository.getJob(context.organization.id, jobId);
   if (job === null) return null;
   const latestDescription = await context.repository.getLatestJobDescription(
@@ -207,7 +277,7 @@ export async function getDemoJob(jobId: string): Promise<JobPageData | null> {
 }
 
 export async function getValuationPageData(valuationId: string): Promise<ValuationPageData | null> {
-  const context = await getDemoContext();
+  const context = await getAppContext("VIEW");
   const snapshot = await context.service.getSnapshot(context.organization.id, valuationId);
   if (snapshot === null) return null;
 
@@ -229,10 +299,39 @@ export async function getValuationPageData(valuationId: string): Promise<Valuati
     context.organization.id,
     valuationId,
   );
-  const reviewActions = await context.repository.listReviewActions(
-    context.organization.id,
-    valuationId,
+  const reviewResult = await context.pool.query(
+    `SELECT
+       r.id,
+       r.organization_id,
+       r.valuation_id,
+       r.action,
+       r.comment,
+       r.created_at,
+       r.actor_user_id,
+       u.name AS actor_name,
+       u.email AS actor_email
+     FROM valuation_review_actions r
+     LEFT JOIN auth_users u ON u.id = r.actor_user_id
+     WHERE r.organization_id = $1 AND r.valuation_id = $2
+     ORDER BY r.created_at, r.id`,
+    [context.organization.id, valuationId],
   );
+  const reviewActions: ReviewActionView[] = reviewResult.rows.map((row) => ({
+    id: row.id as string,
+    organizationId: row.organization_id as string,
+    valuationId: row.valuation_id as string,
+    action: row.action as ReviewActionView["action"],
+    comment: row.comment as string | null,
+    createdAt: row.created_at as Date,
+    actor:
+      row.actor_user_id === null
+        ? null
+        : {
+            id: row.actor_user_id as string,
+            name: row.actor_name as string,
+            email: row.actor_email as string,
+          },
+  }));
 
   let scoring: ScoringResult | null = null;
   if (snapshot.complete) {
@@ -257,5 +356,6 @@ export async function getValuationPageData(valuationId: string): Promise<Valuati
     evidence,
     reviewActions,
     scoring,
+    capabilities: context.capabilities,
   };
 }

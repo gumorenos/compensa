@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgres://compensa:compensa@127.0.0.1:5432/compensa_test
+      BETTER_AUTH_SECRET: ci-only-compensa-secret-at-least-32-characters-long
+      BETTER_AUTH_URL: http://localhost:3000
     services:
       postgres:
         image: postgres:18.4

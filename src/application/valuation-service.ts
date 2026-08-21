@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { evaluateValuation, type ScoringResult } from "../domain/scoring-engine.js";
 import type { MethodologyDefinition, ValuationSelections } from "../domain/methodology.js";
 import {
@@ -282,6 +283,7 @@ export class ValuationService {
     organizationId: string,
     valuationId: string,
     comment?: string | null,
+    actorUserId?: string | null,
   ): Promise<Valuation> {
     return this.repository.transaction(async (client) => {
       await lockValuation(client, valuationId);
@@ -314,6 +316,13 @@ export class ValuationService {
         normalizedComment,
         client,
       );
+      await attributeReviewActor(
+        client,
+        organizationId,
+        valuationId,
+        "SUBMITTED",
+        actorUserId ?? null,
+      );
       await this.repository.appendValuationEvent(
         organizationId,
         valuationId,
@@ -329,6 +338,7 @@ export class ValuationService {
     organizationId: string,
     valuationId: string,
     comment: string,
+    actorUserId?: string | null,
   ): Promise<Valuation> {
     const normalizedComment = normalizeOptionalText(comment);
     if (normalizedComment === null) {
@@ -364,6 +374,13 @@ export class ValuationService {
         normalizedComment,
         client,
       );
+      await attributeReviewActor(
+        client,
+        organizationId,
+        valuationId,
+        "RETURNED",
+        actorUserId ?? null,
+      );
       await this.repository.appendValuationEvent(
         organizationId,
         valuationId,
@@ -379,6 +396,7 @@ export class ValuationService {
     organizationId: string,
     valuationId: string,
     comment?: string | null,
+    actorUserId?: string | null,
   ): Promise<Valuation> {
     return this.repository.transaction(async (client) => {
       await lockValuation(client, valuationId);
@@ -410,6 +428,13 @@ export class ValuationService {
         "APPROVED",
         normalizedComment,
         client,
+      );
+      await attributeReviewActor(
+        client,
+        organizationId,
+        valuationId,
+        "APPROVED",
+        actorUserId ?? null,
       );
       await this.repository.appendValuationEvent(
         organizationId,
@@ -521,13 +546,44 @@ function requireEditableValuation(valuation: Valuation | null): asserts valuatio
   }
 }
 
-async function lockValuation(
-  client: { query: (text: string, values?: unknown[]) => Promise<unknown> },
-  valuationId: string,
-): Promise<void> {
+async function lockValuation(client: PoolClient, valuationId: string): Promise<void> {
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
     `valuation-edit:${valuationId}`,
   ]);
+}
+
+async function attributeReviewActor(
+  client: PoolClient,
+  organizationId: string,
+  valuationId: string,
+  action: "SUBMITTED" | "RETURNED" | "APPROVED",
+  actorUserId: string | null,
+): Promise<void> {
+  if (actorUserId === null) return;
+
+  const result = await client.query(
+    `UPDATE valuation_review_actions
+     SET actor_user_id = $4
+     WHERE id = (
+       SELECT id
+       FROM valuation_review_actions
+       WHERE organization_id = $1
+         AND valuation_id = $2
+         AND action = $3
+         AND actor_user_id IS NULL
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1
+     )
+     RETURNING id`,
+    [organizationId, valuationId, action, actorUserId],
+  );
+
+  if (result.rowCount !== 1) {
+    throw new PersistenceError(
+      "AUDIT_ACTOR_WRITE_FAILED",
+      `Could not attribute ${action} review action to authenticated actor.`,
+    );
+  }
 }
 
 function normalizeOptionalText(value: string | null): string | null {
