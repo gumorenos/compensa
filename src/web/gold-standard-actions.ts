@@ -47,7 +47,7 @@ export async function captureGoldStandardAction(formData: FormData): Promise<voi
       anonymizedLabel: requiredText(formData, "anonymizedLabel"),
       partition: partitionValue(formData),
       isAnchor: checked(formData, "isAnchor"),
-      expertUserId: context.access.user.id,
+      expertUserId: null,
       createdByUserId: context.access.user.id,
       notes: optionalText(formData, "notes"),
     },
