@@ -1,22 +1,24 @@
 import Link from "next/link";
-import { listDemoJobs } from "../src/web/runtime.js";
+import { getAppContext, listDemoJobs } from "../src/web/runtime.js";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const jobs = await listDemoJobs();
+  const [context, jobs] = await Promise.all([getAppContext("VIEW"), listDemoJobs()]);
 
   return (
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">Compensa Demo</span>
+          <span className="eyebrow">{context.organization.name} · {context.access.role}</span>
           <h1>Puestos</h1>
           <p className="muted">
-            Crea puestos y ejecuta valoraciones manuales sobre un motor determinístico y trazable.
+            Valoraciones manuales sobre un motor determinístico, trazable y protegido por roles.
           </p>
         </div>
-        <Link href="/jobs/new" className="button">Nuevo puesto</Link>
+        {context.capabilities.canManageJobs && (
+          <Link href="/jobs/new" className="button">Nuevo puesto</Link>
+        )}
       </div>
 
       <section className="card">
@@ -24,9 +26,13 @@ export default async function HomePage() {
           <div className="empty">
             <h2>Todavía no hay puestos</h2>
             <p>
-              Registra el primer puesto para probar el flujo manual de valoración antes de incorporar IA.
+              {context.capabilities.canManageJobs
+                ? "Registra el primer puesto para iniciar el flujo de valoración."
+                : "Tu organización todavía no tiene puestos disponibles."}
             </p>
-            <Link href="/jobs/new" className="button">Crear primer puesto</Link>
+            {context.capabilities.canManageJobs && (
+              <Link href="/jobs/new" className="button">Crear primer puesto</Link>
+            )}
           </div>
         ) : (
           <div className="table-wrap">
