@@ -19,7 +19,8 @@ CREATE TABLE jobs (
   job_family text,
   status text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (id, organization_id)
 );
 
 CREATE UNIQUE INDEX jobs_org_code_unique
@@ -50,7 +51,7 @@ CREATE INDEX methodology_versions_org_idx ON methodology_versions (organization_
 CREATE TABLE valuations (
   id uuid PRIMARY KEY,
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
-  job_id uuid NOT NULL REFERENCES jobs(id) ON DELETE RESTRICT,
+  job_id uuid NOT NULL,
   methodology_version_id uuid NOT NULL REFERENCES methodology_versions(id) ON DELETE RESTRICT,
   version integer NOT NULL CHECK (version > 0),
   status text NOT NULL DEFAULT 'DRAFT' CHECK (
@@ -60,7 +61,10 @@ CREATE TABLE valuations (
   grade_code text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (job_id, version)
+  UNIQUE (id, organization_id),
+  UNIQUE (job_id, version),
+  FOREIGN KEY (job_id, organization_id)
+    REFERENCES jobs(id, organization_id) ON DELETE RESTRICT
 );
 
 CREATE INDEX valuations_org_idx ON valuations (organization_id);
@@ -70,7 +74,7 @@ CREATE INDEX valuations_job_idx ON valuations (job_id);
 CREATE TABLE valuation_decisions (
   id uuid PRIMARY KEY,
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
-  valuation_id uuid NOT NULL REFERENCES valuations(id) ON DELETE CASCADE,
+  valuation_id uuid NOT NULL,
   dimension_code text NOT NULL,
   selected_level_code text NOT NULL,
   source text NOT NULL DEFAULT 'MANUAL' CHECK (
@@ -79,7 +83,9 @@ CREATE TABLE valuation_decisions (
   justification text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (valuation_id, dimension_code)
+  UNIQUE (valuation_id, dimension_code),
+  FOREIGN KEY (valuation_id, organization_id)
+    REFERENCES valuations(id, organization_id) ON DELETE CASCADE
 );
 
 CREATE INDEX valuation_decisions_org_idx ON valuation_decisions (organization_id);
@@ -88,10 +94,12 @@ CREATE INDEX valuation_decisions_valuation_idx ON valuation_decisions (valuation
 CREATE TABLE valuation_events (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
-  valuation_id uuid NOT NULL REFERENCES valuations(id) ON DELETE CASCADE,
+  valuation_id uuid NOT NULL,
   action text NOT NULL,
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (valuation_id, organization_id)
+    REFERENCES valuations(id, organization_id) ON DELETE CASCADE
 );
 
 CREATE INDEX valuation_events_org_idx ON valuation_events (organization_id);
