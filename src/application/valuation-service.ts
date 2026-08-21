@@ -32,6 +32,13 @@ export class ValuationService {
     input: UpsertDecisionInput,
   ): Promise<ValuationSnapshot> {
     return this.repository.transaction(async (client) => {
+      // Serialize edits to the same valuation. Without this, two concurrent
+      // dimensions can each observe an incomplete set and leave the aggregate
+      // result stale even though all required decisions have been committed.
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        `valuation-edit:${valuationId}`,
+      ]);
+
       const valuation = await this.repository.getValuation(organizationId, valuationId, client);
       if (valuation === null) {
         throw new PersistenceError(
