@@ -44,6 +44,8 @@ jobs:
         run: npm test
       - name: PostgreSQL integration tests
         run: npm run test:integration
+      - name: Verify migration-only command
+        run: npm run db:migrate
       - name: Validate staging Compose file
         env:
           POSTGRES_PASSWORD: compensa
