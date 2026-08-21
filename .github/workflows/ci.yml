@@ -36,6 +36,8 @@ jobs:
         run: npm install
       - name: Typecheck
         run: npm run typecheck
+      - name: Build web application
+        run: npm run build
       - name: Unit tests
         run: npm test
       - name: PostgreSQL integration tests
