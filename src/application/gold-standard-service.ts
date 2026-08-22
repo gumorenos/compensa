@@ -17,15 +17,24 @@ import {
   type GoldStandardCase,
   type GoldStandardCaseBundle,
 } from "../persistence/gold-standard.js";
+import {
+  parseGoldStandardImport,
+  type GoldStandardImportDocument,
+  type GoldStandardImportRow,
+} from "./gold-standard-import.js";
 
 export interface CaptureApprovedValuationInput {
   caseCode: string;
   anonymizedLabel: string;
-  partition?: GoldStandardPartition;
-  isAnchor?: boolean;
-  expertUserId?: string | null;
-  createdByUserId?: string | null;
-  notes?: string | null;
+  partition?: GoldStandardPartition | undefined;
+  isAnchor?: boolean | undefined;
+  expertUserId?: string | null | undefined;
+  createdByUserId?: string | null | undefined;
+  notes?: string | null | undefined;
+}
+
+export interface GoldStandardImportResult {
+  imported: GoldStandardCaseBundle[];
 }
 
 export class GoldStandardService {
@@ -42,164 +51,298 @@ export class GoldStandardService {
     valuationId: string,
     input: CaptureApprovedValuationInput,
   ): Promise<GoldStandardCaseBundle> {
+    return this.gold.transaction((client) =>
+      this.captureApprovedValuationWithClient(organizationId, valuationId, input, client),
+    );
+  }
+
+  async importHistoricalCases(
+    organizationId: string,
+    document: unknown,
+    createdByUserId?: string | null,
+  ): Promise<GoldStandardImportResult> {
+    const parsed: GoldStandardImportDocument = parseGoldStandardImport(document);
     return this.gold.transaction(async (client) => {
-      await lockCapture(client, valuationId);
+      const sortedCodes = [...parsed.cases.map((row) => row.caseCode)].sort();
+      for (const caseCode of sortedCodes) {
+        await lockHistoricalImport(client, organizationId, caseCode);
+      }
 
-      const existing = await this.gold.getCaseBySourceValuation(
+      const imported: GoldStandardCaseBundle[] = [];
+      for (const row of parsed.cases) {
+        imported.push(
+          await this.importHistoricalCaseWithClient(
+            organizationId,
+            row,
+            createdByUserId ?? null,
+            client,
+          ),
+        );
+      }
+      return { imported };
+    });
+  }
+
+  private async importHistoricalCaseWithClient(
+    organizationId: string,
+    row: GoldStandardImportRow,
+    createdByUserId: string | null,
+    client: PoolClient,
+  ): Promise<GoldStandardCaseBundle> {
+    const methodology = await this.core.getMethodologyVersionForOrganization(
+      organizationId,
+      row.methodologyVersionId,
+      client,
+    );
+    if (methodology === null) {
+      throw new PersistenceError(
+        "METHODOLOGY_NOT_FOUND",
+        `Historical Gold Standard case ${row.caseCode} references a methodology unavailable to this organization.`,
+      );
+    }
+
+    const selections: ValuationSelections = Object.fromEntries(
+      row.decisions.map((decision) => [decision.dimensionCode, decision.selectedLevelCode]),
+    );
+    const scoring = evaluateValuation(methodology.definition, selections);
+    if (scoring.status !== "SUCCESS" || scoring.points === null || scoring.grade === null) {
+      throw new PersistenceError(
+        "GOLD_IMPORT_NOT_REPRODUCIBLE",
+        `Historical case ${row.caseCode} cannot be reproduced: ${scoring.errors
+          .map((error) => `${error.code}: ${error.message}`)
+          .join("; ")}`,
+      );
+    }
+
+    if (
+      row.expectedTotalPoints !== undefined &&
+      row.expectedGradeCode !== undefined &&
+      (!numbersEqual(row.expectedTotalPoints, scoring.points) ||
+        row.expectedGradeCode !== scoring.grade.code)
+    ) {
+      throw new PersistenceError(
+        "GOLD_IMPORT_RESULT_MISMATCH",
+        `Historical case ${row.caseCode} declares ${row.expectedTotalPoints}/${row.expectedGradeCode} but recalculates to ${scoring.points}/${scoring.grade.code}.`,
+      );
+    }
+
+    const draftCase = await this.gold.createCase(
+      {
         organizationId,
-        valuationId,
-        client,
-      );
-      if (existing !== null) {
-        throw new PersistenceError(
-          "GOLD_CASE_ALREADY_CAPTURED",
-          `Valuation ${valuationId} is already represented by Gold Standard case ${existing.caseCode}.`,
-        );
-      }
+        caseCode: row.caseCode,
+        anonymizedLabel: row.anonymizedLabel,
+        sourceType: "IMPORT",
+        sourceValuationId: null,
+        methodologyVersionId: methodology.id,
+        jobDescriptionVersionId: null,
+        status: "DRAFT",
+        partition: row.partition ?? "UNASSIGNED",
+        isAnchor: row.isAnchor ?? false,
+        jobSnapshot: row.job,
+        methodologySnapshot: methodology.definition,
+        descriptionSnapshot: row.description ?? null,
+        expertUserId: row.expertUserId ?? null,
+        createdByUserId,
+        notes: row.notes ?? null,
+      },
+      client,
+    );
 
-      const valuation = await this.core.getValuation(organizationId, valuationId, client);
-      requireApprovedValuation(valuation);
-
-      const job = await this.core.getJob(organizationId, valuation.jobId, client);
-      const methodology = await this.core.getMethodologyVersionForOrganization(
-        organizationId,
-        valuation.methodologyVersionId,
-        client,
-      );
-      const decisions = await this.core.listValuationDecisions(
-        organizationId,
-        valuation.id,
-        client,
-      );
-      const evidence = await this.core.listValuationEvidence(
-        organizationId,
-        valuation.id,
-        client,
-      );
-
-      if (job === null) {
-        throw new PersistenceError("JOB_NOT_FOUND", "Approved valuation references no available job.");
-      }
-      if (methodology === null) {
-        throw new PersistenceError(
-          "METHODOLOGY_NOT_FOUND",
-          "Approved valuation references no methodology available to this organization.",
-        );
-      }
-
-      const description =
-        valuation.jobDescriptionVersionId === null
-          ? null
-          : await this.core.getJobDescriptionVersion(
-              organizationId,
-              valuation.jobDescriptionVersionId,
-              client,
-            );
-      if (valuation.jobDescriptionVersionId !== null && description === null) {
-        throw new PersistenceError(
-          "DESCRIPTION_NOT_FOUND",
-          "Approved valuation references a missing job-description version.",
-        );
-      }
-
-      const selections: ValuationSelections = Object.fromEntries(
-        decisions.map((decision) => [decision.dimensionCode, decision.selectedLevelCode]),
-      );
-      const scoring = evaluateValuation(methodology.definition, selections);
-      if (scoring.status !== "SUCCESS" || scoring.points === null || scoring.grade === null) {
-        throw new PersistenceError(
-          "GOLD_REFERENCE_NOT_REPRODUCIBLE",
-          `Approved valuation cannot be reproduced: ${scoring.errors
-            .map((error) => `${error.code}: ${error.message}`)
-            .join("; ")}`,
-        );
-      }
-      if (
-        valuation.totalPoints === null ||
-        !numbersEqual(valuation.totalPoints, scoring.points) ||
-        valuation.gradeCode !== scoring.grade.code
-      ) {
-        throw new PersistenceError(
-          "GOLD_REFERENCE_RESULT_MISMATCH",
-          `Approved valuation stores ${valuation.totalPoints ?? "null"}/${valuation.gradeCode ?? "null"} but recalculates to ${scoring.points}/${scoring.grade.code}.`,
-        );
-      }
-
-      const draftCase = await this.gold.createCase(
+    for (const decision of row.decisions) {
+      const copied = await this.gold.createDecision(
         {
           organizationId,
-          caseCode: input.caseCode,
-          anonymizedLabel: input.anonymizedLabel,
-          sourceType: "APPROVED_VALUATION",
-          sourceValuationId: valuation.id,
-          methodologyVersionId: methodology.id,
-          jobDescriptionVersionId: description?.id ?? null,
-          status: "DRAFT",
-          partition: input.partition ?? "UNASSIGNED",
-          isAnchor: input.isAnchor ?? false,
-          jobSnapshot: snapshotJob(job),
-          methodologySnapshot: methodology.definition,
-          descriptionSnapshot: description?.content ?? null,
-          expertUserId: input.expertUserId ?? null,
-          createdByUserId: input.createdByUserId ?? null,
-          notes: input.notes ?? null,
+          caseId: draftCase.id,
+          dimensionCode: decision.dimensionCode,
+          selectedLevelCode: decision.selectedLevelCode,
+          justification: decision.justification ?? null,
         },
         client,
       );
-
-      const decisionIdMap = new Map<string, string>();
-      for (const decision of decisions) {
-        const copied = await this.gold.createDecision(
-          {
-            organizationId,
-            caseId: draftCase.id,
-            dimensionCode: decision.dimensionCode,
-            selectedLevelCode: decision.selectedLevelCode,
-            justification: decision.justification,
-          },
-          client,
-        );
-        decisionIdMap.set(decision.id, copied.id);
-      }
-
-      for (const item of evidence) {
-        const goldDecisionId = decisionIdMap.get(item.decisionId);
-        if (goldDecisionId === undefined) {
-          throw new PersistenceError(
-            "GOLD_EVIDENCE_DECISION_MISSING",
-            `Evidence ${item.id} references a decision that was not copied into the Gold Standard case.`,
-          );
-        }
+      for (const item of decision.evidence ?? []) {
         await this.gold.createEvidence(
           {
             organizationId,
             caseId: draftCase.id,
-            decisionId: goldDecisionId,
+            decisionId: copied.id,
             sourceType: item.sourceType,
-            sourceSection: item.sourceSection,
+            sourceSection: item.sourceSection ?? null,
             excerpt: item.excerpt,
           },
           client,
         );
       }
+    }
 
-      await this.gold.validateCase(
+    await this.gold.validateCase(
+      organizationId,
+      draftCase.id,
+      scoring.points,
+      scoring.grade.code,
+      client,
+    );
+    const bundle = await this.gold.getCaseBundle(organizationId, draftCase.id, client);
+    if (bundle === null) {
+      throw new PersistenceError(
+        "DATABASE_INVARIANT",
+        "Historical Gold Standard case disappeared during its import transaction.",
+      );
+    }
+    return bundle;
+  }
+
+  private async captureApprovedValuationWithClient(
+    organizationId: string,
+    valuationId: string,
+    input: CaptureApprovedValuationInput,
+    client: PoolClient,
+  ): Promise<GoldStandardCaseBundle> {
+    await lockCapture(client, valuationId);
+    const existing = await this.gold.getCaseBySourceValuation(organizationId, valuationId, client);
+    if (existing !== null) {
+      throw new PersistenceError(
+        "GOLD_CASE_ALREADY_CAPTURED",
+        `Valuation ${valuationId} is already represented by Gold Standard case ${existing.caseCode}.`,
+      );
+    }
+
+    const valuation = await this.core.getValuation(organizationId, valuationId, client);
+    requireApprovedValuation(valuation);
+    const job = await this.core.getJob(organizationId, valuation.jobId, client);
+    const methodology = await this.core.getMethodologyVersionForOrganization(
+      organizationId,
+      valuation.methodologyVersionId,
+      client,
+    );
+    const decisions = await this.core.listValuationDecisions(
+      organizationId,
+      valuation.id,
+      client,
+    );
+    const evidence = await this.core.listValuationEvidence(
+      organizationId,
+      valuation.id,
+      client,
+    );
+    if (job === null) {
+      throw new PersistenceError("JOB_NOT_FOUND", "Approved valuation references no available job.");
+    }
+    if (methodology === null) {
+      throw new PersistenceError(
+        "METHODOLOGY_NOT_FOUND",
+        "Approved valuation references no methodology available to this organization.",
+      );
+    }
+
+    const description =
+      valuation.jobDescriptionVersionId === null
+        ? null
+        : await this.core.getJobDescriptionVersion(
+            organizationId,
+            valuation.jobDescriptionVersionId,
+            client,
+          );
+    if (valuation.jobDescriptionVersionId !== null && description === null) {
+      throw new PersistenceError(
+        "DESCRIPTION_NOT_FOUND",
+        "Approved valuation references a missing job-description version.",
+      );
+    }
+
+    const selections: ValuationSelections = Object.fromEntries(
+      decisions.map((decision) => [decision.dimensionCode, decision.selectedLevelCode]),
+    );
+    const scoring = evaluateValuation(methodology.definition, selections);
+    if (scoring.status !== "SUCCESS" || scoring.points === null || scoring.grade === null) {
+      throw new PersistenceError(
+        "GOLD_REFERENCE_NOT_REPRODUCIBLE",
+        `Approved valuation cannot be reproduced: ${scoring.errors
+          .map((error) => `${error.code}: ${error.message}`)
+          .join("; ")}`,
+      );
+    }
+    if (
+      valuation.totalPoints === null ||
+      !numbersEqual(valuation.totalPoints, scoring.points) ||
+      valuation.gradeCode !== scoring.grade.code
+    ) {
+      throw new PersistenceError(
+        "GOLD_REFERENCE_RESULT_MISMATCH",
+        `Approved valuation stores ${valuation.totalPoints ?? "null"}/${valuation.gradeCode ?? "null"} but recalculates to ${scoring.points}/${scoring.grade.code}.`,
+      );
+    }
+
+    const draftCase = await this.gold.createCase(
+      {
         organizationId,
-        draftCase.id,
-        scoring.points,
-        scoring.grade.code,
+        caseCode: input.caseCode,
+        anonymizedLabel: input.anonymizedLabel,
+        sourceType: "APPROVED_VALUATION",
+        sourceValuationId: valuation.id,
+        methodologyVersionId: methodology.id,
+        jobDescriptionVersionId: description?.id ?? null,
+        status: "DRAFT",
+        partition: input.partition ?? "UNASSIGNED",
+        isAnchor: input.isAnchor ?? false,
+        jobSnapshot: snapshotJob(job),
+        methodologySnapshot: methodology.definition,
+        descriptionSnapshot: description?.content ?? null,
+        expertUserId: input.expertUserId ?? null,
+        createdByUserId: input.createdByUserId ?? null,
+        notes: input.notes ?? null,
+      },
+      client,
+    );
+
+    const decisionIdMap = new Map<string, string>();
+    for (const decision of decisions) {
+      const copied = await this.gold.createDecision(
+        {
+          organizationId,
+          caseId: draftCase.id,
+          dimensionCode: decision.dimensionCode,
+          selectedLevelCode: decision.selectedLevelCode,
+          justification: decision.justification,
+        },
         client,
       );
-
-      const bundle = await this.gold.getCaseBundle(organizationId, draftCase.id, client);
-      if (bundle === null) {
+      decisionIdMap.set(decision.id, copied.id);
+    }
+    for (const item of evidence) {
+      const goldDecisionId = decisionIdMap.get(item.decisionId);
+      if (goldDecisionId === undefined) {
         throw new PersistenceError(
-          "DATABASE_INVARIANT",
-          "Gold Standard case disappeared during its creation transaction.",
+          "GOLD_EVIDENCE_DECISION_MISSING",
+          `Evidence ${item.id} references a decision that was not copied into the Gold Standard case.`,
         );
       }
-      return bundle;
-    });
+      await this.gold.createEvidence(
+        {
+          organizationId,
+          caseId: draftCase.id,
+          decisionId: goldDecisionId,
+          sourceType: item.sourceType,
+          sourceSection: item.sourceSection,
+          excerpt: item.excerpt,
+        },
+        client,
+      );
+    }
+    await this.gold.validateCase(
+      organizationId,
+      draftCase.id,
+      scoring.points,
+      scoring.grade.code,
+      client,
+    );
+    const bundle = await this.gold.getCaseBundle(organizationId, draftCase.id, client);
+    if (bundle === null) {
+      throw new PersistenceError(
+        "DATABASE_INVARIANT",
+        "Gold Standard case disappeared during its creation transaction.",
+      );
+    }
+    return bundle;
   }
 
   async getCase(
@@ -250,14 +393,9 @@ export class GoldStandardService {
         "Only validated Gold Standard cases can be used for comparisons.",
       );
     }
-
     const referenceSelections: ValuationSelections = Object.fromEntries(
-      bundle.decisions.map((decision) => [
-        decision.dimensionCode,
-        decision.selectedLevelCode,
-      ]),
+      bundle.decisions.map((decision) => [decision.dimensionCode, decision.selectedLevelCode]),
     );
-
     return compareAgainstGoldStandard(
       {
         methodology: bundle.case.methodologySnapshot,
@@ -306,6 +444,16 @@ function snapshotJob(job: Job) {
 async function lockCapture(client: PoolClient, valuationId: string): Promise<void> {
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
     `gold-standard-capture:${valuationId}`,
+  ]);
+}
+
+async function lockHistoricalImport(
+  client: PoolClient,
+  organizationId: string,
+  caseCode: string,
+): Promise<void> {
+  await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+    `gold-standard-import:${organizationId}:${caseCode}`,
   ]);
 }
 
