@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GoldStandardService } from "../../src/application/gold-standard-service.js";
-import { ValuationService } from "../../src/application/valuation-service.js";
 import { demoMethodology, demoMidLevelSelections } from "../../src/fixtures/demo-methodology.js";
 import { CompensaRepository, createPool, runMigrations } from "../../src/persistence/database.js";
 
@@ -11,7 +10,6 @@ if (databaseUrl === undefined || databaseUrl.length === 0) {
 
 const pool = createPool(databaseUrl);
 const repository = new CompensaRepository(pool);
-const valuationService = new ValuationService(repository);
 const goldService = new GoldStandardService(pool);
 
 beforeAll(async () => { await runMigrations(pool); });
@@ -39,19 +37,12 @@ async function createUser(email: string): Promise<string> {
   return result.rows[0]!.id as string;
 }
 
-async function createOrganizationWithApprovedValuations(slug: string, count: number) {
+async function createOrganizationWithMethodology(slug: string) {
   const organization = await repository.createOrganization({
     slug,
     name: `${slug} Corp`,
     countryCode: "PE",
     currencyCode: "PEN",
-  });
-  const job = await repository.createJob(organization.id, {
-    code: `${slug.toUpperCase()}-001`,
-    name: "Jefe de Planeamiento",
-    department: "Finanzas",
-    area: "Planeamiento",
-    jobFamily: "Finanzas",
   });
   const methodology = await repository.createMethodologyVersion({
     organizationId: organization.id,
@@ -59,55 +50,64 @@ async function createOrganizationWithApprovedValuations(slug: string, count: num
     contentOwner: "Compensa demo",
     status: "ACTIVE",
   });
-  await repository.createJobDescriptionVersion(organization.id, job.id, {
-    content: "Responsabilidades: Puede aprobar ajustes operativos dentro de políticas definidas.",
-    sourceLabel: "Descriptivo experto",
-  });
-
-  const valuations = [];
-  for (let index = 0; index < count; index += 1) {
-    const valuation = await valuationService.startValuation(organization.id, job.id, methodology.id);
-    for (const [dimensionCode, selectedLevelCode] of Object.entries(demoMidLevelSelections)) {
-      await valuationService.saveDecision(organization.id, valuation.id, { dimensionCode, selectedLevelCode });
-      await valuationService.saveDecisionSupport(organization.id, valuation.id, {
-        dimensionCode,
-        justification: `Juicio experto ${index + 1} para ${dimensionCode}.`,
-      });
-    }
-    await valuationService.submitForReview(organization.id, valuation.id, "Lista para revisión.");
-    valuations.push(await valuationService.approve(organization.id, valuation.id, "Aprobada."));
-  }
-  return { organization, valuations };
+  return { organization, methodology };
 }
 
-describe("Gold Standard bulk import", () => {
-  it("imports multiple approved valuations atomically with metadata", async () => {
-    const source = await createOrganizationWithApprovedValuations("bulk-success", 2);
+function historicalCase(methodologyVersionId: string, caseCode: string, overrides: Record<string, unknown> = {}) {
+  return {
+    caseCode,
+    anonymizedLabel: `Referencia ${caseCode}`,
+    methodologyVersionId,
+    job: {
+      code: `JOB-${caseCode}`,
+      name: "Jefe de Planeamiento",
+      department: "Finanzas",
+      area: "Planeamiento",
+      jobFamily: "Finanzas",
+    },
+    description: "Responsabilidades: Puede aprobar ajustes operativos dentro de políticas definidas.",
+    decisions: Object.entries(demoMidLevelSelections).map(([dimensionCode, selectedLevelCode]) => ({
+      dimensionCode,
+      selectedLevelCode,
+      justification: `Juicio experto para ${dimensionCode}.`,
+      evidence: dimensionCode === "AUTONOMY"
+        ? [{
+            sourceType: "JOB_DESCRIPTION",
+            sourceSection: "Responsabilidades",
+            excerpt: "Puede aprobar ajustes operativos dentro de políticas definidas.",
+          }]
+        : [],
+    })),
+    expectedTotalPoints: 231,
+    expectedGradeCode: "G3",
+    ...overrides,
+  };
+}
+
+describe("Gold Standard historical bulk import", () => {
+  it("imports multiple historical expert cases atomically with snapshots and metadata", async () => {
+    const source = await createOrganizationWithMethodology("historical-success");
     const creatorUserId = await createUser("import-admin@example.com");
 
-    const result = await goldService.importApprovedValuations(source.organization.id, {
+    const result = await goldService.importHistoricalCases(source.organization.id, {
       version: 1,
       cases: [
-        {
-          valuationId: source.valuations[0]!.id,
-          caseCode: "GS-BULK-001",
-          anonymizedLabel: "Referencia histórica 001",
+        historicalCase(source.methodology.id, "GS-HIST-001", {
           partition: "CALIBRATION",
           isAnchor: true,
-        },
-        {
-          valuationId: source.valuations[1]!.id,
-          caseCode: "GS-BULK-002",
-          anonymizedLabel: "Referencia histórica 002",
+        }),
+        historicalCase(source.methodology.id, "GS-HIST-002", {
           partition: "HOLDOUT",
           isAnchor: false,
-        },
+        }),
       ],
     }, creatorUserId);
 
     expect(result.imported).toHaveLength(2);
     expect(result.imported[0]!.case).toMatchObject({
-      caseCode: "GS-BULK-001",
+      caseCode: "GS-HIST-001",
+      sourceType: "IMPORT",
+      sourceValuationId: null,
       partition: "CALIBRATION",
       isAnchor: true,
       status: "VALIDATED",
@@ -115,60 +115,64 @@ describe("Gold Standard bulk import", () => {
       expectedGradeCode: "G3",
       createdByUserId: creatorUserId,
       expertUserId: null,
+      jobDescriptionVersionId: null,
     });
+    expect(result.imported[0]!.case.methodologySnapshot).toEqual(demoMethodology);
+    expect(result.imported[0]!.decisions).toHaveLength(6);
+    expect(result.imported[0]!.evidence).toHaveLength(1);
     expect(result.imported[1]!.case.partition).toBe("HOLDOUT");
     expect(await goldService.listCases(source.organization.id)).toHaveLength(2);
   });
 
-  it("rolls back the entire batch when a later source belongs to another organization", async () => {
-    const tenantA = await createOrganizationWithApprovedValuations("bulk-tenant-a", 1);
-    const tenantB = await createOrganizationWithApprovedValuations("bulk-tenant-b", 1);
+  it("rolls back the entire batch when a later case references another tenant methodology", async () => {
+    const tenantA = await createOrganizationWithMethodology("historical-tenant-a");
+    const tenantB = await createOrganizationWithMethodology("historical-tenant-b");
 
-    await expect(goldService.importApprovedValuations(tenantA.organization.id, {
+    await expect(goldService.importHistoricalCases(tenantA.organization.id, {
       version: 1,
       cases: [
-        {
-          valuationId: tenantA.valuations[0]!.id,
-          caseCode: "GS-ROLLBACK-1",
-          anonymizedLabel: "Debe revertirse",
-        },
-        {
-          valuationId: tenantB.valuations[0]!.id,
-          caseCode: "GS-ROLLBACK-2",
-          anonymizedLabel: "Tenant incorrecto",
-        },
+        historicalCase(tenantA.methodology.id, "GS-ROLLBACK-1"),
+        historicalCase(tenantB.methodology.id, "GS-ROLLBACK-2"),
       ],
-    })).rejects.toMatchObject({ code: "VALUATION_NOT_FOUND" });
+    })).rejects.toMatchObject({ code: "METHODOLOGY_NOT_FOUND" });
 
     expect(await goldService.listCases(tenantA.organization.id)).toEqual([]);
     expect(await goldService.listCases(tenantB.organization.id)).toEqual([]);
   });
 
-  it("rejects an already captured source and preserves prior references", async () => {
-    const source = await createOrganizationWithApprovedValuations("bulk-existing", 2);
-    await goldService.captureApprovedValuation(source.organization.id, source.valuations[0]!.id, {
-      caseCode: "GS-EXISTING",
-      anonymizedLabel: "Existente",
-    });
+  it("rejects a declared historical score mismatch and leaves no partial reference", async () => {
+    const source = await createOrganizationWithMethodology("historical-mismatch");
 
-    await expect(goldService.importApprovedValuations(source.organization.id, {
+    await expect(goldService.importHistoricalCases(source.organization.id, {
       version: 1,
       cases: [
-        {
-          valuationId: source.valuations[1]!.id,
-          caseCode: "GS-NEW-WOULD-ROLLBACK",
-          anonymizedLabel: "Nueva",
-        },
-        {
-          valuationId: source.valuations[0]!.id,
-          caseCode: "GS-DUPLICATE-SOURCE",
-          anonymizedLabel: "Duplicada",
-        },
+        historicalCase(source.methodology.id, "GS-MISMATCH-1"),
+        historicalCase(source.methodology.id, "GS-MISMATCH-2", {
+          expectedTotalPoints: 999,
+          expectedGradeCode: "G9",
+        }),
       ],
-    })).rejects.toMatchObject({ code: "GOLD_CASE_ALREADY_CAPTURED" });
+    })).rejects.toMatchObject({ code: "GOLD_IMPORT_RESULT_MISMATCH" });
 
-    const cases = await goldService.listCases(source.organization.id);
-    expect(cases).toHaveLength(1);
-    expect(cases[0]!.caseCode).toBe("GS-EXISTING");
+    expect(await goldService.listCases(source.organization.id)).toEqual([]);
+  });
+
+  it("rejects invalid expert selections before freezing the historical case", async () => {
+    const source = await createOrganizationWithMethodology("historical-invalid-selection");
+    const invalidSelections = Object.entries(demoMidLevelSelections).map(([dimensionCode, selectedLevelCode]) => ({
+      dimensionCode,
+      selectedLevelCode: dimensionCode === "AUTONOMY" ? "A99" : selectedLevelCode,
+    }));
+
+    await expect(goldService.importHistoricalCases(source.organization.id, {
+      version: 1,
+      cases: [historicalCase(source.methodology.id, "GS-INVALID", {
+        decisions: invalidSelections,
+        expectedTotalPoints: undefined,
+        expectedGradeCode: undefined,
+      })],
+    })).rejects.toMatchObject({ code: "GOLD_IMPORT_NOT_REPRODUCIBLE" });
+
+    expect(await goldService.listCases(source.organization.id)).toEqual([]);
   });
 });
