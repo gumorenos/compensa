@@ -13,11 +13,11 @@ import { parseGoldStandardImport, type GoldStandardImportDocument } from "./gold
 export interface CaptureApprovedValuationInput {
   caseCode: string;
   anonymizedLabel: string;
-  partition?: GoldStandardPartition;
-  isAnchor?: boolean;
-  expertUserId?: string | null;
-  createdByUserId?: string | null;
-  notes?: string | null;
+  partition?: GoldStandardPartition | undefined;
+  isAnchor?: boolean | undefined;
+  expertUserId?: string | null | undefined;
+  createdByUserId?: string | null | undefined;
+  notes?: string | null | undefined;
 }
 
 export interface GoldStandardImportResult { imported: GoldStandardCaseBundle[]; }
