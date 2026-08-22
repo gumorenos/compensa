@@ -29,6 +29,16 @@ async function cleanDatabase(): Promise<void> {
   );
 }
 
+async function createUser(email: string): Promise<string> {
+  const result = await pool.query(
+    `INSERT INTO auth_users (name, email, email_verified)
+     VALUES ('Import Admin', $1, true)
+     RETURNING id`,
+    [email],
+  );
+  return result.rows[0]!.id as string;
+}
+
 async function createOrganizationWithApprovedValuations(slug: string, count: number) {
   const organization = await repository.createOrganization({
     slug,
@@ -73,6 +83,7 @@ async function createOrganizationWithApprovedValuations(slug: string, count: num
 describe("Gold Standard bulk import", () => {
   it("imports multiple approved valuations atomically with metadata", async () => {
     const source = await createOrganizationWithApprovedValuations("bulk-success", 2);
+    const creatorUserId = await createUser("import-admin@example.com");
 
     const result = await goldService.importApprovedValuations(source.organization.id, {
       version: 1,
@@ -92,7 +103,7 @@ describe("Gold Standard bulk import", () => {
           isAnchor: false,
         },
       ],
-    }, "admin-user-id");
+    }, creatorUserId);
 
     expect(result.imported).toHaveLength(2);
     expect(result.imported[0]!.case).toMatchObject({
@@ -102,7 +113,7 @@ describe("Gold Standard bulk import", () => {
       status: "VALIDATED",
       expectedTotalPoints: 231,
       expectedGradeCode: "G3",
-      createdByUserId: "admin-user-id",
+      createdByUserId: creatorUserId,
       expertUserId: null,
     });
     expect(result.imported[1]!.case.partition).toBe("HOLDOUT");
