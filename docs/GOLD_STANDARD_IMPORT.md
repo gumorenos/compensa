@@ -76,19 +76,16 @@ Do not place personal names, employee performance information, compensation amou
 
 ## Automated QA
 
-The branch includes parser tests and PostgreSQL integration coverage for:
+Verified in CI on the implementation head before merge:
 
-- valid historical parsing and normalization;
-- unsupported/empty documents;
-- duplicate case codes;
-- duplicate dimensions;
-- invalid partitions, anchors and evidence types;
-- paired historical points/grade validation;
-- successful multi-case import;
-- snapshot/decision/evidence persistence;
-- creator versus expert attribution;
-- rollback when a later case references another tenant's methodology;
-- rollback on historical score/grade mismatch;
-- rejection of invalid level selections.
+- TypeScript strict typecheck: PASS;
+- Next.js production build: PASS;
+- unit tests: 21/21 PASS across 4 files;
+- PostgreSQL integration tests: 33/33 PASS across 8 files;
+- migration-only command: PASS, 4 migrations;
+- staging Compose validation: PASS;
+- hardened Docker runner build: PASS;
+- staging container smoke test: PASS;
+- npm audit during install/build: 0 vulnerabilities detected.
 
-CI must still pass TypeScript, production Next.js build, all unit/integration tests, migrations, Compose validation, hardened Docker build and smoke test before merge.
+Coverage includes valid historical parsing/normalization, unsupported and empty documents, duplicate case codes, duplicate dimensions, invalid partitions/anchors/evidence types, paired expected points/grade validation, successful multi-case import, snapshot/decision/evidence persistence, creator versus expert attribution, whole-batch rollback on cross-tenant methodology, whole-batch rollback on historical score/grade mismatch and rejection of invalid expert level selections.
