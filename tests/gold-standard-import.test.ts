@@ -102,6 +102,13 @@ describe("Gold Standard import parser", () => {
     })).toThrowError(expect.objectContaining({ code: "GOLD_IMPORT_INVALID_ROW" }));
   });
 
+  it("rejects direct expert attribution in import version 1", () => {
+    expect(() => parseGoldStandardImport({
+      version: 1,
+      cases: [validCase({ expertUserId: "user-from-any-tenant" })],
+    })).toThrowError(expect.objectContaining({ code: "GOLD_IMPORT_INVALID_ROW" }));
+  });
+
   it("rejects invalid partition, evidence type and non-boolean anchor", () => {
     expect(() => parseGoldStandardImport({
       version: 1,
