@@ -25,7 +25,7 @@ export interface GoldStandardImportRow {
   expectedGradeCode?: string | undefined;
   partition?: GoldStandardPartition | undefined;
   isAnchor?: boolean | undefined;
-  expertUserId?: string | null | undefined;
+  expertUserId?: null | undefined;
   notes?: string | null | undefined;
 }
 
@@ -90,6 +90,10 @@ function parseRow(raw: unknown, index: number): GoldStandardImportRow {
     invalid(index, "expectedTotalPoints and expectedGradeCode must be supplied together");
   }
 
+  if (raw.expertUserId !== undefined && raw.expertUserId !== null) {
+    invalid(index, "expertUserId must be null in import version 1; attribute an expert later through a membership-aware operation");
+  }
+
   return {
     caseCode,
     anonymizedLabel,
@@ -101,7 +105,7 @@ function parseRow(raw: unknown, index: number): GoldStandardImportRow {
     expectedGradeCode,
     partition,
     isAnchor,
-    expertUserId: optionalNullableString(raw.expertUserId, index, "expertUserId"),
+    expertUserId: raw.expertUserId === null ? null : undefined,
     notes: optionalNullableString(raw.notes, index, "notes"),
   };
 }
