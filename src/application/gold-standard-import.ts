@@ -5,10 +5,10 @@ export interface GoldStandardImportRow {
   valuationId: string;
   caseCode: string;
   anonymizedLabel: string;
-  partition?: GoldStandardPartition;
-  isAnchor?: boolean;
-  expertUserId?: string | null;
-  notes?: string | null;
+  partition?: GoldStandardPartition | undefined;
+  isAnchor?: boolean | undefined;
+  expertUserId?: string | null | undefined;
+  notes?: string | null | undefined;
 }
 
 export interface GoldStandardImportDocument {
