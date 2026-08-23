@@ -2,7 +2,6 @@
 
 Compensa is a modular compensation-management product. The current Stage 1 focuses on **auditable job evaluation**: versioned job descriptions, deterministic scoring, evidence, review/approval and organization-scoped access control.
 
-> The repository does not reproduce proprietary Hay/Korn Ferry tables, manuals or protected methodology content. The bundled methodology is a fictional fixture used to test the generic point-factor engine.
 
 ## Current capabilities
 
