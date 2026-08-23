@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MethodologyAdminService } from "../../../src/application/methodology-admin-service.js";
 import {
   saveJobDescriptionAction,
   startValuationAction,
@@ -14,6 +15,10 @@ export default async function JobPage({ params }: { params: Promise<{ jobId: str
   if (data === null) notFound();
 
   const { context, job, latestDescription } = data;
+  const methodologies = await new MethodologyAdminService(context.pool).listAvailable(
+    context.organization.id,
+    { activeOnly: true },
+  );
 
   return (
     <>
@@ -109,9 +114,9 @@ export default async function JobPage({ params }: { params: Promise<{ jobId: str
 
         <aside className="card card-pad summary-card">
           <span className="eyebrow">Valoración</span>
-          <h2 style={{ marginTop: 6 }}>{context.methodology.name}</h2>
+          <h2 style={{ marginTop: 6 }}>Elegir metodología</h2>
           <p className="muted">
-            Fixture ficticio v{context.methodology.version}. Sirve para validar el flujo; no representa una metodología propietaria.
+            La valoración quedará anclada a la versión seleccionada. Cambios metodológicos posteriores requieren una versión nueva y no alteran esta valoración.
           </p>
           <div className="callout">
             {latestDescription === null ? (
@@ -127,11 +132,30 @@ export default async function JobPage({ params }: { params: Promise<{ jobId: str
             )}
           </div>
           {context.capabilities.canEvaluate ? (
-            <form action={startValuationAction}>
-              <input type="hidden" name="jobId" value={job.id} />
-              <input type="hidden" name="methodologyVersionId" value={context.methodology.id} />
-              <button className="button" type="submit">Iniciar valoración</button>
-            </form>
+            methodologies.length === 0 ? (
+              <p className="muted">No hay metodologías activas disponibles.</p>
+            ) : (
+              <form action={startValuationAction} className="stack compact-stack">
+                <input type="hidden" name="jobId" value={job.id} />
+                <div className="field">
+                  <label htmlFor="methodologyVersionId">Metodología *</label>
+                  <select
+                    id="methodologyVersionId"
+                    name="methodologyVersionId"
+                    defaultValue={context.methodology.id}
+                    required
+                  >
+                    {methodologies.map((methodology) => (
+                      <option key={methodology.id} value={methodology.id}>
+                        {methodology.name} · v{methodology.version}
+                        {methodology.organizationId === null ? " · global" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button className="button" type="submit">Iniciar valoración</button>
+              </form>
+            )
           ) : (
             <p className="muted">Tu rol no puede iniciar ni editar valoraciones.</p>
           )}
