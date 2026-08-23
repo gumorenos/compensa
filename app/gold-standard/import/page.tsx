@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MethodologyAdminService } from "../../../src/application/methodology-admin-service.js";
 import { GoldStandardImportForm } from "../../../src/web/gold-standard-import-form.js";
 import { getAppContext } from "../../../src/web/runtime.js";
 
@@ -6,14 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function GoldStandardImportPage() {
   const context = await getAppContext("MANAGE_GOLD_STANDARD");
-  const dimensions = context.methodology.definition.factors.flatMap((factor) =>
-    factor.dimensions.map((dimension) => ({
-      factorName: factor.name,
-      code: dimension.code,
-      name: dimension.name,
-      required: dimension.required,
-      levels: dimension.levels,
-    })),
+  const methodologies = await new MethodologyAdminService(context.pool).listAvailable(
+    context.organization.id,
+    { activeOnly: true },
   );
 
   return (
@@ -31,64 +27,104 @@ export default async function GoldStandardImportPage() {
         </Link>
       </div>
 
-      <section className="card card-pad" style={{ marginBottom: 24 }}>
-        <div className="section-head">
+      <section className="card" style={{ marginBottom: 24 }}>
+        <div className="card-pad section-head">
           <div>
-            <span className="eyebrow">Metodología activa</span>
-            <h2 style={{ marginTop: 6 }}>{context.methodology.definition.name}</h2>
+            <span className="eyebrow">Metodologías activas</span>
+            <h2 style={{ marginTop: 6 }}>Elige la versión que originó cada referencia</h2>
             <p className="muted" style={{ marginBottom: 0 }}>
-              Usa este identificador en <code>methodologyVersionId</code> para referencias evaluadas con esta versión.
+              Copia su identificador en <code>methodologyVersionId</code>. El dry-run comprobará que la metodología esté disponible para esta organización y reproducirá el resultado con su snapshot exacto.
             </p>
           </div>
-          <span className="badge">v{context.methodology.definition.version}</span>
+          <Link className="button button-small button-secondary" href="/methodologies">
+            Administrar metodologías
+          </Link>
         </div>
-        <div className="import-methodology-id">
-          <code>{context.methodology.id}</code>
-        </div>
-      </section>
 
-      <GoldStandardImportForm />
-
-      <section className="card" style={{ marginTop: 24 }}>
-        <div className="card-pad">
-          <span className="eyebrow">Referencia del contrato</span>
-          <h2 style={{ marginTop: 6 }}>Dimensiones y niveles disponibles</h2>
-          <p className="muted" style={{ marginBottom: 0 }}>
-            Cada caso histórico debe incluir una decisión para todas las dimensiones requeridas. Los códigos de nivel deben coincidir exactamente con esta versión de metodología.
-          </p>
-        </div>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Factor</th>
-                <th>Dimensión</th>
-                <th>Código</th>
-                <th>Requerida</th>
-                <th>Niveles</th>
+                <th>Metodología</th>
+                <th>Versión</th>
+                <th>ID para importación</th>
+                <th>Dimensiones</th>
+                <th>Origen</th>
               </tr>
             </thead>
             <tbody>
-              {dimensions.map((dimension) => (
-                <tr key={dimension.code}>
-                  <td>{dimension.factorName}</td>
-                  <td>{dimension.name}</td>
-                  <td><code>{dimension.code}</code></td>
-                  <td>{dimension.required ? "Sí" : "No"}</td>
+              {methodologies.map((methodology) => (
+                <tr key={methodology.id}>
+                  <td><strong>{methodology.name}</strong><div className="muted"><code>{methodology.code}</code></div></td>
+                  <td>{methodology.version}</td>
+                  <td><code>{methodology.id}</code></td>
                   <td>
-                    <div className="import-level-codes">
-                      {dimension.levels.map((level) => (
-                        <span className="badge" key={level.code} title={level.description ?? level.label}>
-                          {level.code} · {level.label}
-                        </span>
-                      ))}
-                    </div>
+                    {methodology.definition.factors.reduce(
+                      (total, factor) => total + factor.dimensions.length,
+                      0,
+                    )}
                   </td>
+                  <td>{methodology.contentOwner}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </section>
+
+      <GoldStandardImportForm />
+
+      <section className="stack" style={{ marginTop: 24 }}>
+        {methodologies.map((methodology) => {
+          const dimensions = methodology.definition.factors.flatMap((factor) =>
+            factor.dimensions.map((dimension) => ({
+              factorName: factor.name,
+              code: dimension.code,
+              name: dimension.name,
+              required: dimension.required,
+              levels: dimension.levels,
+            })),
+          );
+          return (
+            <details className="card details-block" key={methodology.id}>
+              <summary>
+                {methodology.name} · v{methodology.version} · {dimensions.length} dimensiones
+              </summary>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Factor</th>
+                      <th>Dimensión</th>
+                      <th>Código</th>
+                      <th>Requerida</th>
+                      <th>Niveles</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dimensions.map((dimension) => (
+                      <tr key={dimension.code}>
+                        <td>{dimension.factorName}</td>
+                        <td>{dimension.name}</td>
+                        <td><code>{dimension.code}</code></td>
+                        <td>{dimension.required ? "Sí" : "No"}</td>
+                        <td>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {dimension.levels.map((level) => (
+                              <span className="badge" key={level.code} title={level.description ?? level.label}>
+                                {level.code} · {level.label}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          );
+        })}
       </section>
 
       <section className="card card-pad" style={{ marginTop: 24 }}>
