@@ -1,6 +1,6 @@
 # Compensa — QA pendiente
 
-Actualizado: 2026-08-21
+Actualizado: 2026-08-22
 
 Este archivo registra validaciones que no cubre todavía el CI automatizado y que deben ejecutarse antes de considerar el MVP listo para usuarios externos.
 
@@ -26,6 +26,12 @@ Este archivo registra validaciones que no cubre todavía el CI automatizado y qu
 - Matriz ADMIN / EVALUATOR / REVIEWER.
 - Actor persistido atómicamente en SUBMITTED / RETURNED / APPROVED.
 - Foreign keys e invariantes multi-tenant existentes del dominio.
+- Parser de importación histórica Gold Standard y rechazo de atribución directa de experto.
+- Importación Gold Standard multi-caso atómica con rollback total ante un caso inválido.
+- Reproducción determinística de puntos/grado histórico y rechazo de mismatch.
+- Aislamiento de metodología Gold Standard entre tenants.
+- Dry-run histórico read-only y detección de códigos de caso existentes.
+- Contrato de UI: permiso `MANAGE_GOLD_STANDARD` en página y Server Action, dry-run servidor antes del write e invalidación del preview cuando cambia el payload.
 
 ## Pendiente: E2E real de navegador
 
@@ -65,6 +71,22 @@ Este archivo registra validaciones que no cubre todavía el CI automatizado y qu
 - Aprobar como REVIEWER y confirmar inmutabilidad final.
 - Revisar historial de workflow y legibilidad de la traza de cálculo.
 - Probar layout en móvil y desktop.
+
+### Gold Standard e importación histórica
+
+- Entrar a `/gold-standard/import` como ADMIN y confirmar que muestra la metodología activa, su ID, dimensiones y niveles.
+- Intentar abrir `/gold-standard/import` como EVALUATOR y REVIEWER y confirmar rechazo.
+- Pegar JSON malformado y confirmar mensaje seguro sin escrituras.
+- Previsualizar un lote histórico válido y confirmar puntos/grado por caso.
+- Editar el JSON después de un preview válido y confirmar que **Importar lote validado** vuelve a quedar deshabilitado hasta repetir el dry-run.
+- Probar un caso con `methodologyVersionId` de otra organización y confirmar que solo se informa como no disponible.
+- Importar un lote pequeño anonimizado y confirmar aparición en `/gold-standard` con el resultado y partición esperados.
+- Intentar un `caseCode` duplicado y confirmar bloqueo sin escrituras parciales.
+- Forzar un segundo caso inválido en un lote y confirmar rollback total en la UI/DB.
+- Confirmar que la importación exitosa crea `GOLD_STANDARD_HISTORICAL_IMPORT` en `security_audit_events`.
+- Si la UI reporta una advertencia de auditoría, revisar logs del servidor antes de aceptar el entorno como listo.
+- Revisar legibilidad de tablas de preview y códigos de metodología en móvil y desktop.
+- No utilizar nombres de trabajadores, desempeño individual ni remuneraciones reales en el QA manual.
 
 ## Pendiente antes de exposición pública
 

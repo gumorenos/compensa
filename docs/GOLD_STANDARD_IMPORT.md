@@ -51,7 +51,23 @@ All dimensions required by the referenced methodology must be represented in `de
 
 `partition` defaults to `UNASSIGNED`; accepted values are `UNASSIGNED`, `CALIBRATION` and `HOLDOUT`. `isAnchor` defaults to false. Evidence source types are `JOB_DESCRIPTION`, `INTERVIEW` and `OTHER`.
 
-For import version 1, `expertUserId` must be omitted or `null`. This intentionally prevents a historical file from binding an expert identity to an arbitrary Compensa user or to a user from another tenant. The user performing the future authenticated import operation can be stored separately as `createdByUserId`. Explicit expert attribution, if needed, should be implemented later as a membership-aware operation that confirms an ACTIVE membership in the same organization.
+For import version 1, `expertUserId` must be omitted or `null`. This intentionally prevents a historical file from binding an expert identity to an arbitrary Compensa user or to a user from another tenant. The user performing the authenticated import operation is stored separately as `createdByUserId`. Explicit expert attribution, if needed, should be implemented later as a membership-aware operation that confirms an ACTIVE membership in the same organization.
+
+## ADMIN operator workflow
+
+The authenticated ADMIN interface is `/gold-standard/import`.
+
+1. Open Gold Standard and choose **Importar históricos**.
+2. Confirm the active methodology version and its `methodologyVersionId` shown on the page.
+3. Paste the version 1 JSON document.
+4. Run **Previsualizar**. This calls the read-only dry-run service and does not create Gold Standard records.
+5. Review every case. The preview shows whether it is valid, recalculated points/grade and any blocking issue.
+6. If the JSON is edited after preview, the import button becomes blocked again until a new dry-run is executed.
+7. **Importar lote validado** is enabled only for a preview that matches the current payload and has zero invalid cases.
+8. The server repeats the dry-run immediately before the real write; the browser state is never trusted as the authorization or validation source.
+9. The real import remains atomic: a failure in any case rolls back all new cases in the batch.
+
+The first UI version limits each operation to 100 cases and 512 KiB. These are application-level safeguards, not changes to the version 1 document format.
 
 ## Safety properties
 
@@ -66,6 +82,9 @@ For import version 1, `expertUserId` must be omitted or `null`. This intentional
 - Case-code advisory locks are acquired in sorted order to serialize overlapping concurrent batches without introducing lock-order deadlocks.
 - The complete batch is one PostgreSQL transaction: if any later case fails, every new case in that batch rolls back.
 - Direct expert-user attribution is rejected by the v1 parser.
+- The ADMIN UI requires `MANAGE_GOLD_STANDARD`, and the Server Action checks the same permission again.
+- Editing the browser payload after preview invalidates the client-side import readiness state.
+- The Server Action repeats the preview before invoking the importer, so a forged or stale browser state cannot bypass validation.
 - Existing validated Gold Standard immutability protections remain unchanged.
 - No AI/model call participates in parsing, scoring, validation or import.
 
@@ -79,4 +98,4 @@ Do not place personal names, employee performance information, compensation amou
 
 The final branch must pass the complete CI gate before merge: strict TypeScript, Next.js production build, all unit and PostgreSQL integration tests, migration-only command, staging Compose validation, hardened Docker runner build and staging smoke test.
 
-Coverage includes historical parsing/normalization, unsupported and empty documents, duplicate case codes, duplicate dimensions, invalid partitions/anchors/evidence types, rejection of direct expert attribution, paired expected points/grade validation, successful multi-case import, snapshot/decision/evidence persistence, creator versus expert separation, whole-batch rollback on cross-tenant methodology, whole-batch rollback on historical score/grade mismatch and rejection of invalid expert level selections.
+Coverage includes historical parsing/normalization, unsupported and empty documents, duplicate case codes, duplicate dimensions, invalid partitions/anchors/evidence types, rejection of direct expert attribution, paired expected points/grade validation, successful multi-case import, snapshot/decision/evidence persistence, creator versus expert separation, whole-batch rollback on cross-tenant methodology, whole-batch rollback on historical score/grade mismatch and rejection of invalid expert level selections. The import UI is additionally gated by the production Next.js build and the same hardened container smoke test used by staging.

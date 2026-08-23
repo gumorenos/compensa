@@ -28,6 +28,11 @@ export default async function GoldStandardPage() {
             Referencias expertas inmutables para calibrar y evaluar futuras propuestas automáticas sin mezclar el conjunto de ajuste con el holdout.
           </p>
         </div>
+        {data.canManage && (
+          <Link className="button" href="/gold-standard/import">
+            Importar históricos
+          </Link>
+        )}
       </div>
 
       <dl className="metadata card card-pad" style={{ marginBottom: 24 }}>
@@ -62,8 +67,13 @@ export default async function GoldStandardPage() {
           <div className="empty">
             <h2>Aún no hay referencias</h2>
             <p>
-              Cuando una valoración aprobada se capture como Gold Standard aparecerá aquí con su metodología, descriptivo, decisiones, evidencia y resultado experto congelados.
+              Captura una valoración aprobada o, si eres ADMIN, importa referencias históricas anonimizadas. En ambos casos Compensa congela metodología, descriptivo, decisiones, evidencia y resultado reproducible.
             </p>
+            {data.canManage && (
+              <Link className="button" href="/gold-standard/import">
+                Importar referencias históricas
+              </Link>
+            )}
           </div>
         ) : (
           <div className="table-wrap">
