@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { GoldStandardImportPreviewService, type GoldStandardImportPreview } from "../application/gold-standard-import-preview.js";
+import {
+  GoldStandardImportPreviewService,
+  type GoldStandardImportPreview,
+} from "../application/gold-standard-import-preview.js";
 import { GoldStandardService } from "../application/gold-standard-service.js";
 import { PersistenceError } from "../persistence/database.js";
 import { appendSecurityAuditEvent, getAppContext } from "./runtime.js";
@@ -16,14 +19,6 @@ export interface GoldStandardImportActionState {
   message: string | null;
   importedCount: number;
 }
-
-export const initialGoldStandardImportActionState: GoldStandardImportActionState = {
-  status: "IDLE",
-  payload: "",
-  preview: null,
-  message: null,
-  importedCount: 0,
-};
 
 export async function goldStandardImportAction(
   _previousState: GoldStandardImportActionState,
@@ -86,20 +81,32 @@ export async function goldStandardImportAction(
       context.access.user.id,
     );
     const caseCodes = result.imported.map((item) => item.case.caseCode);
-    await appendSecurityAuditEvent(
-      context,
-      "GOLD_STANDARD_HISTORICAL_IMPORT",
-      "GOLD_STANDARD_BATCH",
-      null,
-      { count: result.imported.length, caseCodes },
-    );
-    revalidatePath("/gold-standard");
 
+    let auditRecorded = true;
+    try {
+      await appendSecurityAuditEvent(
+        context,
+        "GOLD_STANDARD_HISTORICAL_IMPORT",
+        "GOLD_STANDARD_BATCH",
+        null,
+        { count: result.imported.length, caseCodes },
+      );
+    } catch (error) {
+      auditRecorded = false;
+      console.error("Gold Standard import succeeded but its security audit event failed.", error);
+    }
+
+    revalidatePath("/gold-standard");
+    revalidatePath("/gold-standard/import");
+
+    const baseMessage = `${result.imported.length} referencia${result.imported.length === 1 ? "" : "s"} histórica${result.imported.length === 1 ? "" : "s"} importada${result.imported.length === 1 ? "" : "s"}.`;
     return {
       status: "IMPORTED",
       payload: "",
       preview: null,
-      message: `${result.imported.length} referencia${result.imported.length === 1 ? "" : "s"} histórica${result.imported.length === 1 ? "" : "s"} importada${result.imported.length === 1 ? "" : "s"}.`,
+      message: auditRecorded
+        ? baseMessage
+        : `${baseMessage} La importación quedó guardada, pero no se pudo registrar su evento de auditoría; revisa los logs del servidor.`,
       importedCount: result.imported.length,
     };
   } catch (error) {
