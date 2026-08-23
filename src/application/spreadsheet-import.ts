@@ -449,8 +449,8 @@ async function loadXlsx(bytes: Uint8Array, preferredSheet: string): Promise<Tabu
   if (worksheet === undefined) {
     throw new SpreadsheetImportError("SPREADSHEET_SHEET_NOT_FOUND", `El XLSX debe incluir una hoja llamada ${preferredSheet}.`);
   }
-  const rowCount = worksheet.actualRowCount ?? worksheet.rowCount;
-  const columnCount = worksheet.actualColumnCount ?? worksheet.columnCount;
+  const rowCount = Math.max(worksheet.actualRowCount ?? 0, worksheet.rowCount);
+  const columnCount = Math.max(worksheet.actualColumnCount ?? 0, worksheet.columnCount);
   if (rowCount > MAX_SPREADSHEET_ROWS + 1) throw new SpreadsheetImportError("SPREADSHEET_TOO_MANY_ROWS", `La hoja supera ${MAX_SPREADSHEET_ROWS} filas de datos.`);
   if (columnCount > MAX_SPREADSHEET_COLUMNS) throw new SpreadsheetImportError("SPREADSHEET_TOO_MANY_COLUMNS", `La hoja supera ${MAX_SPREADSHEET_COLUMNS} columnas.`);
   const matrix: Scalar[][] = [];
