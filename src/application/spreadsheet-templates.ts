@@ -41,8 +41,8 @@ async function buildXlsxTemplate(kind: SpreadsheetTemplateKind): Promise<Spreads
   type WorkbookConstructor = new () => Workbook;
   type ModuleShape = { Workbook?: WorkbookConstructor; default?: { Workbook?: WorkbookConstructor } };
 
-  const module = (await import("@excel.js/exceljs")) as unknown as ModuleShape;
-  const WorkbookCtor = module.Workbook ?? module.default?.Workbook;
+  const excelModule = (await import("@excel.js/exceljs")) as unknown as ModuleShape;
+  const WorkbookCtor = excelModule.Workbook ?? excelModule.default?.Workbook;
   if (WorkbookCtor === undefined) throw new Error("Spreadsheet engine is unavailable.");
   const workbook = new WorkbookCtor();
   const instructions = workbook.addWorksheet("Instrucciones");
@@ -89,11 +89,7 @@ async function buildXlsxTemplate(kind: SpreadsheetTemplateKind): Promise<Spreads
   instructions.columns = [{ width: 34 }, { width: 90 }, { width: 28 }];
   instructions.getRow(1).font = { bold: true, size: 16 };
   const buffer = await workbook.xlsx.writeBuffer();
-  const body = buffer instanceof Uint8Array
-    ? new Uint8Array(buffer)
-    : buffer instanceof ArrayBuffer
-      ? new Uint8Array(buffer)
-      : new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  const body = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : new Uint8Array(buffer);
   return {
     fileName: kind === "gold-standard" ? "compensa-gold-standard.xlsx" : "compensa-metodologia.xlsx",
     contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
