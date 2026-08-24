@@ -16,6 +16,7 @@ export async function AppNavLinks() {
 
   return (
     <>
+      <Link href="/overview">Inicio</Link>
       <Link href="/">Puestos</Link>
       <Link href="/valuations">Valoraciones</Link>
       <Link href="/comparables">Comparar</Link>
