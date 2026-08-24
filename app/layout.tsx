@@ -27,6 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/">Puestos</Link>
               <Link href="/methodologies">Metodologías</Link>
               <Link href="/gold-standard">Gold Standard</Link>
+              <Link href="/calibration">Calibración</Link>
               <SessionNav />
             </nav>
           </div>

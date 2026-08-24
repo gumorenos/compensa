@@ -29,6 +29,8 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Importaciones Excel/CSV: parsers tabulares, CSV con coma/punto y coma/tabulación, agrupación Gold Standard, conversión de metodología tabular al contrato canónico, rechazo de fórmulas XLSX y pruebas de plantillas.
 - Round-trip PostgreSQL de metodología importada desde spreadsheet → Gold Standard importado desde spreadsheet.
 - Contrato UI/server de spreadsheet: permisos ADMIN, dry-run repetido antes de escribir, tipos `.xlsx/.csv` e invalidación visual cuando cambia el archivo/origen.
+- Calibración: agregación ponderada de métricas, snapshot de membresía, lifecycle DRAFT → COMPLETED, bloqueo de cierre incompleto, aislamiento tenant, inmutabilidad SQL del run completado y rechazo de fuentes AI/EXTERNAL aún no integradas.
+- Contrato de calibración: `MANAGE_CALIBRATION` solo ADMIN, Server Actions protegidas y feedback HOLDOUT oculto por contrato de UI hasta completar la corrida.
 
 ## Pendiente: E2E real de navegador
 
@@ -123,6 +125,28 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Importar versión válida y confirmar que aparece en `/methodologies` y puede seleccionarse al iniciar una valoración.
 - Confirmar creación de `METHODOLOGY_SPREADSHEET_IMPORTED` en auditoría.
 - Revisar mensajes y tablas en móvil/desktop.
+
+### Corridas de calibración
+
+- Como ADMIN, asignar varias referencias VALIDATED de una misma metodología a `CALIBRATION` y crear una corrida desde `/calibration`.
+- Confirmar que el número de casos congelados coincide con el conjunto visible al momento de crearla.
+- Cambiar después la partición de una referencia original y confirmar visualmente que la corrida existente conserva su snapshot y una nueva corrida usa la membresía nueva.
+- En una corrida CALIBRATION, confirmar que la referencia experta no se muestra antes del primer guardado del caso.
+- Guardar un candidato exacto y confirmar que después aparecen referencia, distancia 0, puntos/grado y feedback de ese caso.
+- Guardar un candidato con una diferencia de nivel y cotejar manualmente distancia, puntos, grado y resumen agregado.
+- Refrescar el navegador a mitad de la corrida y confirmar persistencia de selecciones candidatas/progreso.
+- Intentar completar con casos pendientes y confirmar que UI y backend lo bloquean.
+- Completar todos los casos, cerrar la corrida y confirmar que selects/botones desaparecen y resultados quedan de solo lectura.
+- Intentar manipular una Server Action de una corrida COMPLETED y confirmar rechazo backend.
+- Como EVALUATOR y REVIEWER, abrir una corrida y confirmar modo lectura; intentar invocar manualmente create/save/complete y confirmar `FORBIDDEN`.
+- Crear una corrida `HOLDOUT`, guardar candidatos y comprobar que **no** aparecen decisiones expertas, puntos expertos, grado experto, métricas por caso ni resumen agregado mientras siga DRAFT.
+- Completar el último caso HOLDOUT y confirmar que recién entonces se revelan resumen y comparaciones.
+- Revisar la tabla “Mayores desviaciones observadas” y confirmar orden: mismatch de grado antes que diferencias de puntos, sin etiqueta automática de outlier.
+- Confirmar auditoría `CALIBRATION_RUN_CREATED` y `CALIBRATION_RUN_COMPLETED` con organización/actor correctos.
+- Probar navegación, selects, detalles plegables y tablas de métricas en desktop y móvil.
+- Probar nombres largos de corrida/puestos y descriptivos extensos.
+- Crear referencias de dos metodologías y comprobar que una corrida nunca mezcla metodologías.
+- Confirmar que la UI no ofrece AI/EXTERNAL como fuente funcional mientras no exista integración real.
 
 ## Pendiente: seguridad/robustez de uploads antes de exposición pública
 

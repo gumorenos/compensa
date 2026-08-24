@@ -48,6 +48,8 @@ export interface GoldStandardMetrics {
   referenceGradeCode: string;
   candidateGradeCode: string;
   gradeMatch: boolean;
+  gradeDistance: number;
+  gradeWithinOne: boolean;
 }
 
 export interface GoldStandardReferenceIssue {
@@ -144,6 +146,25 @@ export function compareAgainstGoldStandard(
     .map((dimension) => dimension.levelDistance)
     .filter((distance): distance is number => distance !== null);
   const absolutePointDifference = Math.abs(candidateScoring.points - reference.expectedPoints);
+  const orderedGrades = [...reference.methodology.grades].sort(
+    (left, right) => left.minPoints - right.minPoints || left.maxPoints - right.maxPoints,
+  );
+  const referenceGradeIndex = orderedGrades.findIndex(
+    (grade) => grade.code === reference.expectedGradeCode,
+  );
+  const candidateGradeIndex = orderedGrades.findIndex(
+    (grade) => grade.code === candidateScoring.grade!.code,
+  );
+  if (referenceGradeIndex < 0 || candidateGradeIndex < 0) {
+    return {
+      status: "INVALID_REFERENCE",
+      errors: [{
+        code: "REFERENCE_GRADE_MISMATCH",
+        message: "Reference or candidate grade is not present in the frozen methodology grade scale.",
+      }],
+    };
+  }
+  const gradeDistance = Math.abs(candidateGradeIndex - referenceGradeIndex);
 
   return {
     status: "SUCCESS",
@@ -170,7 +191,9 @@ export function compareAgainstGoldStandard(
           : (absolutePointDifference / Math.abs(reference.expectedPoints)) * 100,
       referenceGradeCode: reference.expectedGradeCode,
       candidateGradeCode: candidateScoring.grade.code,
-      gradeMatch: candidateScoring.grade.code === reference.expectedGradeCode,
+      gradeMatch: gradeDistance === 0,
+      gradeDistance,
+      gradeWithinOne: gradeDistance <= 1,
     },
   };
 }
