@@ -6,10 +6,10 @@ async function source(path: string): Promise<string> {
 }
 
 describe("Gold Standard coverage web contract", () => {
-  it("keeps the coverage dashboard read-only and available through VIEW", async () => {
+  it("keeps the coverage dashboard read-only but restricted to Gold Standard administrators", async () => {
     const runtime = await source("src/web/gold-standard-coverage-runtime.ts");
-    expect(runtime).toContain('getAppContext("VIEW")');
-    expect(runtime).not.toContain("MANAGE_GOLD_STANDARD");
+    expect(runtime).toContain('getAppContext("MANAGE_GOLD_STANDARD")');
+    expect(runtime).not.toContain('getAppContext("VIEW")');
   });
 
   it("does not invent readiness scores or automatic dataset thresholds", async () => {
@@ -19,9 +19,15 @@ describe("Gold Standard coverage web contract", () => {
     expect(page).not.toMatch(/readinessScore|qualityScore|pass\/fail|aprobado automáticamente/i);
   });
 
-  it("links the coverage dashboard from the Gold Standard home", async () => {
+  it("links the coverage dashboard from the admin-only Gold Standard home", async () => {
     const page = await source("app/gold-standard/page.tsx");
     expect(page).toContain('href="/gold-standard/coverage"');
     expect(page).toContain("Ver cobertura");
+  });
+
+  it("keeps the calibration-to-Gold-Standard link behind calibration management rights", async () => {
+    const page = await source("app/calibration/page.tsx");
+    expect(page).toContain("{data.canManage && (");
+    expect(page).toContain('href="/gold-standard"');
   });
 });
