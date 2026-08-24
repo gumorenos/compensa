@@ -12,7 +12,7 @@
     "start": "next start",
     "db:migrate": "tsx scripts/migrate.ts",
     "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
-    "test": "vitest run tests/scoring-engine.test.ts tests/gold-standard.test.ts tests/gold-standard-permissions.test.ts tests/gold-standard-import.test.ts tests/gold-standard-import-ui-contract.test.ts tests/methodology-import.test.ts tests/spreadsheet-import.test.ts tests/spreadsheet-import-ui-contract.test.ts tests/calibration.test.ts tests/calibration-permissions.test.ts tests/calibration-ui-contract.test.ts tests/calibration-candidate-spreadsheet.test.ts",
+    "test": "vitest run tests/scoring-engine.test.ts tests/gold-standard.test.ts tests/gold-standard-permissions.test.ts tests/gold-standard-import.test.ts tests/gold-standard-import-ui-contract.test.ts tests/gold-standard-coverage.test.ts tests/gold-standard-coverage-ui-contract.test.ts tests/methodology-import.test.ts tests/spreadsheet-import.test.ts tests/spreadsheet-import-ui-contract.test.ts tests/calibration.test.ts tests/calibration-permissions.test.ts tests/calibration-ui-contract.test.ts tests/calibration-candidate-spreadsheet.test.ts",
     "test:integration": "vitest run tests/integration --maxWorkers=1",
     "test:all": "npm run test && npm run test:integration",
     "test:watch": "vitest",
