@@ -6,6 +6,7 @@ export interface GoldStandardCoverageTotals {
   totalCases: number;
   validatedCases: number;
   draftCases: number;
+  archivedCases: number;
   calibrationCases: number;
   holdoutCases: number;
   unassignedCases: number;
@@ -22,6 +23,7 @@ export interface GoldStandardCoverageGap {
   code:
     | "DRAFT_CASES"
     | "UNASSIGNED_CASES"
+    | "NO_VALIDATED_CASES"
     | "NO_CALIBRATION_CASES"
     | "NO_HOLDOUT_CASES"
     | "NO_ANCHOR_CASES"
@@ -61,7 +63,7 @@ export interface GoldStandardCoverageReport {
   gaps: GoldStandardCoverageGap[];
 }
 
-interface GoldStandardCaseQuality {
+export interface GoldStandardCaseQuality {
   decisionCodes: Set<string>;
   justifiedDecisionCodes: Set<string>;
   evidenceDecisionCodes: Set<string>;
@@ -133,7 +135,8 @@ export function buildGoldStandardCoverageReport(
   const totals: GoldStandardCoverageTotals = {
     totalCases: cases.length,
     validatedCases: validated.length,
-    draftCases: cases.length - validated.length,
+    draftCases: cases.filter((item) => item.status === "DRAFT").length,
+    archivedCases: cases.filter((item) => item.status === "ARCHIVED").length,
     calibrationCases: validated.filter((item) => item.partition === "CALIBRATION").length,
     holdoutCases: validated.filter((item) => item.partition === "HOLDOUT").length,
     unassignedCases: validated.filter((item) => item.partition === "UNASSIGNED").length,
@@ -197,44 +200,48 @@ export function buildGoldStandardCoverageReport(
     }
 
     const methodologyGaps: GoldStandardCoverageGap[] = [];
-    if (validatedCases.length > 0 && partitions.CALIBRATION === 0) {
-      methodologyGaps.push(gap("NO_CALIBRATION_CASES", "No hay referencias validadas asignadas a CALIBRATION para esta metodología.", 0, methodologyVersionId));
-    }
-    if (validatedCases.length > 0 && partitions.HOLDOUT === 0) {
-      methodologyGaps.push(gap("NO_HOLDOUT_CASES", "No hay referencias validadas asignadas a HOLDOUT para esta metodología.", 0, methodologyVersionId));
-    }
-    const anchorCases = validatedCases.filter((item) => item.isAnchor).length;
-    if (validatedCases.length > 0 && anchorCases === 0) {
-      methodologyGaps.push(gap("NO_ANCHOR_CASES", "No hay puestos ancla marcados para esta metodología.", 0, methodologyVersionId));
-    }
-    const uncoveredGrades = grades.filter((item) => item.count === 0);
-    if (uncoveredGrades.length > 0) {
-      methodologyGaps.push(gap(
-        "UNCOVERED_GRADES",
-        `Grados definidos sin casos validados: ${uncoveredGrades.map((item) => item.code).join(", ")}.`,
-        uncoveredGrades.length,
-        methodologyVersionId,
-      ));
-    }
-    const missingFamilyCount = validatedCases.filter((item) => normalizeOptional(item.jobSnapshot.jobFamily) === null).length;
-    if (missingFamilyCount > 0) {
-      methodologyGaps.push(gap("MISSING_JOB_FAMILY", `${missingFamilyCount} caso${plural(missingFamilyCount)} sin familia de puesto.`, missingFamilyCount, methodologyVersionId));
-    }
-    const missingDescription = validatedCases.length - casesWithDescription;
-    if (missingDescription > 0) {
-      methodologyGaps.push(gap("MISSING_DESCRIPTION", `${missingDescription} caso${plural(missingDescription)} sin descriptivo congelado.`, missingDescription, methodologyVersionId));
-    }
-    const incompleteDecisions = validatedCases.length - casesWithCompleteRequiredDecisions;
-    if (incompleteDecisions > 0) {
-      methodologyGaps.push(gap("INCOMPLETE_REQUIRED_DECISIONS", `${incompleteDecisions} caso${plural(incompleteDecisions)} no cubre${incompleteDecisions === 1 ? "" : "n"} todas las dimensiones obligatorias.`, incompleteDecisions, methodologyVersionId));
-    }
-    const incompleteJustifications = validatedCases.length - casesWithCompleteJustifications;
-    if (incompleteJustifications > 0) {
-      methodologyGaps.push(gap("INCOMPLETE_JUSTIFICATIONS", `${incompleteJustifications} caso${plural(incompleteJustifications)} tiene${incompleteJustifications === 1 ? "" : "n"} al menos una decisión obligatoria sin justificación.`, incompleteJustifications, methodologyVersionId));
-    }
-    const withoutEvidence = validatedCases.length - casesWithEvidence;
-    if (withoutEvidence > 0) {
-      methodologyGaps.push(gap("NO_EVIDENCE", `${withoutEvidence} caso${plural(withoutEvidence)} no tiene${withoutEvidence === 1 ? "" : "n"} evidencia adjunta a ninguna decisión.`, withoutEvidence, methodologyVersionId));
+    if (validatedCases.length === 0) {
+      methodologyGaps.push(gap("NO_VALIDATED_CASES", "Esta metodología tiene referencias registradas, pero ninguna está VALIDATED.", 0, methodologyVersionId));
+    } else {
+      if (partitions.CALIBRATION === 0) {
+        methodologyGaps.push(gap("NO_CALIBRATION_CASES", "No hay referencias validadas asignadas a CALIBRATION para esta metodología.", 0, methodologyVersionId));
+      }
+      if (partitions.HOLDOUT === 0) {
+        methodologyGaps.push(gap("NO_HOLDOUT_CASES", "No hay referencias validadas asignadas a HOLDOUT para esta metodología.", 0, methodologyVersionId));
+      }
+      const anchorCases = validatedCases.filter((item) => item.isAnchor).length;
+      if (anchorCases === 0) {
+        methodologyGaps.push(gap("NO_ANCHOR_CASES", "No hay puestos ancla marcados para esta metodología.", 0, methodologyVersionId));
+      }
+      const uncoveredGrades = grades.filter((item) => item.count === 0);
+      if (uncoveredGrades.length > 0) {
+        methodologyGaps.push(gap(
+          "UNCOVERED_GRADES",
+          `Grados definidos sin casos validados: ${uncoveredGrades.map((item) => item.code).join(", ")}.`,
+          uncoveredGrades.length,
+          methodologyVersionId,
+        ));
+      }
+      const missingFamilyCount = validatedCases.filter((item) => normalizeOptional(item.jobSnapshot.jobFamily) === null).length;
+      if (missingFamilyCount > 0) {
+        methodologyGaps.push(gap("MISSING_JOB_FAMILY", `${missingFamilyCount} caso${plural(missingFamilyCount)} sin familia de puesto.`, missingFamilyCount, methodologyVersionId));
+      }
+      const missingDescription = validatedCases.length - casesWithDescription;
+      if (missingDescription > 0) {
+        methodologyGaps.push(gap("MISSING_DESCRIPTION", `${missingDescription} caso${plural(missingDescription)} sin descriptivo congelado.`, missingDescription, methodologyVersionId));
+      }
+      const incompleteDecisions = validatedCases.length - casesWithCompleteRequiredDecisions;
+      if (incompleteDecisions > 0) {
+        methodologyGaps.push(gap("INCOMPLETE_REQUIRED_DECISIONS", `${incompleteDecisions} caso${plural(incompleteDecisions)} no cubre${incompleteDecisions === 1 ? "" : "n"} todas las dimensiones obligatorias.`, incompleteDecisions, methodologyVersionId));
+      }
+      const incompleteJustifications = validatedCases.length - casesWithCompleteJustifications;
+      if (incompleteJustifications > 0) {
+        methodologyGaps.push(gap("INCOMPLETE_JUSTIFICATIONS", `${incompleteJustifications} caso${plural(incompleteJustifications)} tiene${incompleteJustifications === 1 ? "" : "n"} al menos una decisión obligatoria sin justificación.`, incompleteJustifications, methodologyVersionId));
+      }
+      const withoutEvidence = validatedCases.length - casesWithEvidence;
+      if (withoutEvidence > 0) {
+        methodologyGaps.push(gap("NO_EVIDENCE", `${withoutEvidence} caso${plural(withoutEvidence)} no tiene${withoutEvidence === 1 ? "" : "n"} evidencia adjunta a ninguna decisión.`, withoutEvidence, methodologyVersionId));
+      }
     }
 
     return {
@@ -245,7 +252,7 @@ export function buildGoldStandardCoverageReport(
       totalCases: grouped.length,
       validatedCases: validatedCases.length,
       partitions,
-      anchorCases,
+      anchorCases: validatedCases.filter((item) => item.isAnchor).length,
       grades,
       jobFamilies,
       sourceTypes,
