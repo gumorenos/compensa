@@ -25,7 +25,9 @@ export default async function CalibrationPage() {
             Compara valoraciones candidatas contra referencias expertas congeladas. Compensa reporta acuerdo por dimensión, distancia de nivel, diferencia de puntos y coincidencia de grado sin inventar umbrales de aprobación.
           </p>
         </div>
-        <Link className="button button-secondary" href="/gold-standard">Ver Gold Standard</Link>
+        {data.canManage && (
+          <Link className="button button-secondary" href="/gold-standard">Ver Gold Standard</Link>
+        )}
       </div>
 
       <div className="notice">
