@@ -23,13 +23,15 @@ export interface SideBySideLevelCell {
   levelLabel: string | null;
 }
 
+export type SideBySideDimensionComparison = "SAME_LEVEL" | "ALL_MISSING" | "DIFFERENT";
+
 export interface SideBySideDimensionRow {
   factorCode: string;
   factorName: string;
   dimensionCode: string;
   dimensionName: string;
   required: boolean;
-  allEqual: boolean;
+  comparison: SideBySideDimensionComparison;
   cells: SideBySideLevelCell[];
 }
 
@@ -210,13 +212,15 @@ export function buildSideBySideComparisonReport(
         };
       });
       const levelCodes = cells.map((cell) => cell.levelCode);
+      const allMissing = levelCodes.every((code) => code === null);
+      const sameLevel = !allMissing && levelCodes.every((code) => code === levelCodes[0]);
       return {
         factorCode: factor.code,
         factorName: factor.name,
         dimensionCode: dimension.code,
         dimensionName: dimension.name,
         required: dimension.required,
-        allEqual: levelCodes.every((code) => code === levelCodes[0]),
+        comparison: allMissing ? "ALL_MISSING" : sameLevel ? "SAME_LEVEL" : "DIFFERENT",
         cells,
       };
     }),
