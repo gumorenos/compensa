@@ -25,4 +25,29 @@ describe("calibration web contract", () => {
     expect(service).toContain('"CALIBRATION_SOURCE_NOT_AVAILABLE"');
     expect(service).toContain('input.candidateSource ?? "MANUAL"');
   });
+
+  it("requires admin permission and repeats preview before spreadsheet writes", async () => {
+    const actions = await source("src/web/calibration-candidate-import-actions.ts");
+    expect(actions).toContain('getAppContext("MANAGE_CALIBRATION")');
+    expect(actions).toContain("const preview = await service.preview");
+    expect(actions.indexOf("const preview = await service.preview")).toBeLessThan(
+      actions.indexOf("await service.importBatch"),
+    );
+  });
+
+  it("invalidates an old preview when the candidate file changes", async () => {
+    const form = await source("src/web/calibration-candidate-import-form.tsx");
+    expect(form).toContain("const [fileChanged, setFileChanged] = useState(false)");
+    expect(form).toContain("state.preview?.canImport === true");
+    expect(form).toContain("!fileChanged");
+    expect(form).toContain("Cambiaste el archivo después del último dry-run");
+  });
+
+  it("keeps HOLDOUT spreadsheet preview free of score and grade columns", async () => {
+    const form = await source("src/web/calibration-candidate-import-form.tsx");
+    expect(form).toContain('const holdout = partition === "HOLDOUT"');
+    expect(form).toContain("{!holdout && <th>Puntos candidato</th>}");
+    expect(form).toContain("{!holdout && <th>Grado candidato</th>}");
+    expect(form).toContain("feedback oculto");
+  });
 });

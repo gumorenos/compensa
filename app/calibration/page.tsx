@@ -58,6 +58,7 @@ export default async function CalibrationPage() {
                   <th>Casos</th>
                   <th>Grado exacto</th>
                   <th>Creada</th>
+                  {data.canManage && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -77,6 +78,15 @@ export default async function CalibrationPage() {
                     <td>{run.summary?.caseCount ?? "—"}</td>
                     <td>{run.summary === null ? "—" : `${(run.summary.gradeMatchRate * 100).toFixed(1)}%`}</td>
                     <td>{formatDate(run.createdAt)}</td>
+                    {data.canManage && (
+                      <td>
+                        {run.status === "DRAFT" ? (
+                          <Link className="button button-small button-secondary" href={`/calibration/${run.id}/import`}>
+                            Cargar candidatos
+                          </Link>
+                        ) : "—"}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
