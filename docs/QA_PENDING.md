@@ -24,6 +24,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Comparables internos: solo valoraciones `APPROVED` del tenant activo y de la misma versión metodológica; diferencias de puntos/grado/niveles, ranking determinístico, detección explícita de historial del mismo puesto, aislamiento tenant y contrato que prohíbe consultar Gold Standard/HOLDOUT o inventar similarity/outlier scores.
 - Comparación lado a lado 2–5: IDs únicos, solo `APPROVED`, tenant activo, misma versión metodológica, orden de columnas estable, resumen de puntos/grados, matriz por dimensión con estados `SAME_LEVEL` / `ALL_MISSING` / `DIFFERENT`, rechazo de DRAFT/cross-tenant/mismatch y contrato sin Gold Standard/HOLDOUT ni score/veredicto automático.
 - Bandeja operativa de Valoraciones: listado tenant-safe de todas las versiones, conteos por estado, filtros parametrizados por puesto/estado/estructura/grado/metodología/iniciador/fecha, validación previa de UUID/estado/fecha, actor de inicio opcional derivado de auditoría, fechas UTC explícitas, límite declarado de 200 filas y contrato sin Gold Standard/HOLDOUT.
+- Inicio operativo: métricas tenant-safe de puestos activos, estados de valoración, puestos activos sin valoración APPROVED y valoraciones editables incompletas; actividad reciente limitada a 8 versiones, semántica explícita para puestos inactivos, fechas UTC y contrato sin Gold Standard/HOLDOUT/calibración/IA.
 - Administración de metodologías: parser estructural, DSL permitido, dry-run, duplicados, aislamiento, concurrencia e inmutabilidad de versiones publicadas.
 - Selección de metodología ACTIVE al iniciar nuevas valoraciones.
 - Excel/CSV: CSV coma/punto y coma/tab, XLSX, agrupación Gold Standard, metodología tabular, rechazo de fórmulas y pruebas de plantillas.
@@ -45,7 +46,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar logout y rechazo de sesión cerrada.
 - Probar expiración/renovación de sesión en staging.
 - Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos.
-- Confirmar visualmente que ADMIN ve Puestos / Valoraciones / Comparar / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Puestos / Valoraciones / Comparar / Metodologías / Calibración pero no Gold Standard.
+- Confirmar visualmente que ADMIN ve Inicio / Puestos / Valoraciones / Comparar / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Inicio / Puestos / Valoraciones / Comparar / Metodologías / Calibración pero no Gold Standard.
 - Confirmar que `/sign-in` y una request sin membership no muestran links de aplicación en la barra superior.
 - Intentar Server Actions manualmente con rol sin permiso y confirmar rechazo backend aunque se manipule HTML.
 - Probar usuario con memberships en dos organizaciones y aislamiento al cambiar organización activa; confirmar además que la navegación se refresca con el rol de la nueva organización.
@@ -53,6 +54,27 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Desactivar membership y organización y confirmar pérdida inmediata de acceso y desaparición de links de aplicación.
 - Confirmar actor correcto en historial de envío, devolución y aprobación.
 - Confirmar que EVALUATOR y REVIEWER reciben `FORBIDDEN` al abrir `/gold-standard`, `/gold-standard/<caseId>` y `/gold-standard/coverage`, sin puntos, grados, decisiones ni metadatos del dataset experto en la respuesta, incluso si escriben la URL manualmente.
+
+### Inicio operativo
+
+- Abrir `/overview` como ADMIN, EVALUATOR y REVIEWER y confirmar acceso de solo lectura mediante `VIEW`.
+- Cotejar `Puestos activos` contra la DB y confirmar que puestos INACTIVE no se incluyen.
+- Cotejar DRAFT / IN_REVIEW / RETURNED / APPROVED contra la bandeja y la DB.
+- Confirmar que `Sin valoración aprobada` cuenta puestos activos sin ninguna versión en estado APPROVED; no debe contar valoraciones ni incluir puestos inactivos.
+- Confirmar que `Valoraciones incompletas` cuenta únicamente DRAFT/RETURNED con `total_points IS NULL`; una valoración completa en RETURNED no debe contarse como incompleta.
+- Crear un puesto activo sin ninguna valoración y confirmar que aumenta `Sin valoración aprobada` pero no `Valoraciones incompletas`.
+- Crear un puesto con valoración DRAFT incompleta y confirmar que ambos indicadores cambian de acuerdo con su semántica independiente.
+- Aprobar una valoración y confirmar que el puesto deja de contar como `Sin valoración aprobada`.
+- Inactivar un puesto con histórico y confirmar que desaparece de los KPI de puestos activos, pero su histórico no se elimina.
+- Cambiar de organización activa y confirmar aislamiento total de métricas y actividad reciente.
+- Crear más de 8 valoraciones con `updated_at` distintos y confirmar que la tabla muestra exactamente las 8 más recientes en orden descendente.
+- Confirmar que la tabla se presenta como `Valoraciones actualizadas recientemente` y no como historial/auditoría; cotejar un caso donde `updated_at` no represente el orden de eventos de auditoría.
+- Confirmar visualmente que las fechas se muestran en UTC mientras no exista timezone por organización.
+- Abrir los enlaces de tarjetas y confirmar destino correcto a Puestos o a la bandeja con el filtro de estado esperado.
+- Abrir cada fila reciente y confirmar que lleva al `valuationId` histórico exacto.
+- Confirmar que el dashboard no muestra readiness score, madurez automática, PASS/FAIL, outlier ni recomendación de grado.
+- Confirmar que la pantalla no consulta ni permite inferir Gold Standard, CALIBRATION o HOLDOUT.
+- Revisar tarjetas y tabla con nombres/metodologías largos en desktop/tablet/móvil y confirmar legibilidad/scroll.
 
 ### Flujo funcional de valoración
 
