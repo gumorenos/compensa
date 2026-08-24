@@ -28,7 +28,7 @@ Al crear una corrida Compensa:
 4. copia a `calibration_run_cases` el puesto anonimizado, descriptivo, metodología, selecciones expertas y resultado experto;
 5. conserva esa membresía aunque luego cambie la partición del caso original.
 
-Una corrida `COMPLETED` y sus resultados son inmutables a nivel de PostgreSQL.
+Una corrida `COMPLETED` y sus resultados son inmutables a nivel de PostgreSQL. Los eventos de creación y cierre se insertan en `security_audit_events` dentro de la misma transacción que el cambio que auditan.
 
 ## Candidato
 
@@ -42,19 +42,22 @@ Por caso se conserva el resultado de `compareAgainstGoldStandard`:
 
 - nivel experto y candidato por dimensión;
 - distancia ordinal de nivel cuando ambas selecciones pertenecen a la misma dimensión;
-- coincidencia exacta;
-- coincidencia dentro de ±1 nivel;
+- coincidencia exacta y dentro de ±1 nivel;
 - puntos experto y candidato;
 - delta firmado y diferencia absoluta de puntos;
 - diferencia porcentual cuando el valor experto no es cero;
 - grado experto y candidato;
-- coincidencia exacta de grado.
+- coincidencia exacta de grado;
+- distancia ordinal de grado y coincidencia dentro de ±1 grado.
+
+La distancia de grado usa el orden de los rangos de puntos de la metodología, no interpreta códigos como `G10`, `G11` o `A/B/C`.
 
 La agregación calcula:
 
 - acuerdo exacto por dimensión, ponderado por número de dimensiones;
 - acuerdo ±1 nivel;
 - acuerdo exacto de grado;
+- acuerdo dentro de ±1 grado, distancia media y distancia máxima de grado;
 - diferencia absoluta media de puntos (MAE);
 - diferencia porcentual absoluta media cuando aplica;
 - delta medio firmado de puntos, útil para observar sesgo hacia arriba o abajo;
@@ -62,7 +65,7 @@ La agregación calcula:
 - distancia máxima observada;
 - mayor diferencia absoluta de puntos.
 
-No existe todavía una etiqueta automática de `outlier`. La UI ordena las mayores desviaciones —primero discrepancias de grado y luego diferencia de puntos— sin decidir por sí sola cuáles deben excluirse.
+No existe todavía una etiqueta automática de `outlier`. La UI ordena las mayores desviaciones —primero discrepancias/distancia de grado y después diferencia de puntos— sin decidir por sí sola cuáles deben excluirse.
 
 ## Permisos
 
