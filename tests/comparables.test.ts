@@ -100,6 +100,20 @@ describe("internal comparables", () => {
     ]);
   });
 
+  it("derives ordinal grade distance by point ranges rather than JSON array order", () => {
+    const unorderedMethodology = {
+      ...demoMethodology,
+      grades: [...demoMethodology.grades].reverse(),
+    };
+    const report = buildInternalComparablesReport(unorderedMethodology, snapshot("base"), [
+      snapshot("higher-grade", { gradeCode: "G4", totalPoints: 300 }),
+      snapshot("lower-grade", { gradeCode: "G2", totalPoints: 190 }),
+    ]);
+
+    expect(report.candidates.find((candidate) => candidate.valuationId === "higher-grade")?.gradeDistance).toBe(1);
+    expect(report.candidates.find((candidate) => candidate.valuationId === "lower-grade")?.gradeDistance).toBe(-1);
+  });
+
   it("excludes valuations from another methodology version", () => {
     const report = buildInternalComparablesReport(demoMethodology, snapshot("base"), [
       snapshot("same-method"),
@@ -109,18 +123,26 @@ describe("internal comparables", () => {
     expect(report.candidates.map((candidate) => candidate.valuationId)).toEqual(["same-method"]);
   });
 
-  it("marks same-job history and leaves missing grade definitions explicit instead of guessing", () => {
-    const base = snapshot("base", { jobId: "job-shared" });
+  it("marks same-job history, rejects blank metadata matches and never guesses unknown grades", () => {
+    const base = snapshot("base", {
+      jobId: "job-shared",
+      jobFamily: " ",
+      department: "",
+    });
     const report = buildInternalComparablesReport(demoMethodology, base, [
       snapshot("history", {
         jobId: "job-shared",
         valuationVersion: 2,
         gradeCode: "UNKNOWN",
+        jobFamily: "",
+        department: " ",
       }),
     ]);
 
     expect(report.candidates[0]).toMatchObject({
       sameJob: true,
+      sameJobFamily: false,
+      sameDepartment: false,
       gradeDistance: null,
       absoluteGradeDistance: null,
     });
