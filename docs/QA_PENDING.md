@@ -1,6 +1,6 @@
 # Compensa — QA pendiente
 
-Actualizado: 2026-08-23
+Actualizado: 2026-08-24
 
 Este archivo es el inventario único de validaciones conocidas que **todavía no cubre el CI automatizado**. Deben ejecutarse antes de considerar Compensa listo para usuarios externos/producción. Si una prueba pasa posteriormente, debe moverse fuera de las secciones pendientes en el mismo cambio que la automatiza o documenta.
 
@@ -21,6 +21,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Gold Standard: captura/importación, reproducción determinística, import multi-caso atómico, rollback, aislamiento tenant, dry-run e inmutabilidad SQL de snapshots validados.
 - Gold Standard completo —listado, detalle, importación y cobertura— protegido por `MANAGE_GOLD_STANDARD` para evitar revelar referencias HOLDOUT a EVALUATOR/REVIEWER.
 - Navegación principal derivada de la membresía activa: Gold Standard solo se renderiza con `MANAGE_GOLD_STANDARD`; los links ya no están hard-coded en el layout y sin contexto de acceso no se muestran destinos de aplicación.
+- Comparables internos: solo valoraciones `APPROVED` del tenant activo y de la misma versión metodológica; diferencias de puntos/grado/niveles, ranking determinístico, detección explícita de historial del mismo puesto, aislamiento tenant y contrato que prohíbe consultar Gold Standard/HOLDOUT o inventar similarity/outlier scores.
 - Administración de metodologías: parser estructural, DSL permitido, dry-run, duplicados, aislamiento, concurrencia e inmutabilidad de versiones publicadas.
 - Selección de metodología ACTIVE al iniciar nuevas valoraciones.
 - Excel/CSV: CSV coma/punto y coma/tab, XLSX, agrupación Gold Standard, metodología tabular, rechazo de fórmulas y pruebas de plantillas.
@@ -42,7 +43,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar logout y rechazo de sesión cerrada.
 - Probar expiración/renovación de sesión en staging.
 - Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos.
-- Confirmar visualmente que ADMIN ve Puestos / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Puestos / Metodologías / Calibración pero no Gold Standard.
+- Confirmar visualmente que ADMIN ve Puestos / Comparar / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Puestos / Comparar / Metodologías / Calibración pero no Gold Standard.
 - Confirmar que `/sign-in` y una request sin membership no muestran links de aplicación en la barra superior.
 - Intentar Server Actions manualmente con rol sin permiso y confirmar rechazo backend aunque se manipule HTML.
 - Probar usuario con memberships en dos organizaciones y aislamiento al cambiar organización activa; confirmar además que la navegación se refresca con el rol de la nueva organización.
@@ -66,6 +67,22 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Aprobar y confirmar inmutabilidad final.
 - Revisar historial y legibilidad de traza.
 - Probar layout móvil/desktop.
+
+### Comparables internos
+
+- Abrir `/comparables` como ADMIN, EVALUATOR y REVIEWER y confirmar acceso de solo lectura mediante `VIEW`.
+- Seleccionar una valoración APPROVED y cotejar manualmente puntos, grado, familia, departamento y versión metodológica contra la valoración fuente.
+- Crear varios puestos APPROVED con la misma metodología y verificar el orden visible: menor `|Δ grado|`, luego menor `|Δ puntos|`, luego menor suma de saltos de nivel.
+- Abrir el detalle de diferencias y cotejar niveles base/comparable y distancia ordinal contra la definición metodológica real.
+- Confirmar que una valoración DRAFT, IN_REVIEW, RETURNED, CANCELLED o SUPERSEDED no aparece como base ni comparable.
+- Confirmar que una valoración de otra versión metodológica no aparece entre candidatos aunque comparta código/nombre de metodología.
+- Aprobar dos versiones del mismo puesto y confirmar la etiqueta de historial del mismo puesto.
+- Probar puestos con familia/departamento iguales y distintos y confirmar que esas coincidencias son contexto, no cambian silenciosamente el ranking.
+- Cambiar de organización y confirmar que ninguna valoración del tenant anterior aparece como base, candidato o detalle.
+- Manipular `valuationId` con un UUID de otro tenant o no APPROVED y confirmar “base no disponible” sin revelar datos.
+- Confirmar que la pantalla no muestra ni permite inferir Gold Standard, CALIBRATION o HOLDOUT y que no añade una ruta alternativa al dataset experto.
+- Confirmar que ningún copy presenta el ranking como equivalencia, PASS/FAIL, similarity score, outlier automático o recomendación de grado.
+- Revisar 20+ comparables, detalles largos y tablas en desktop y móvil.
 
 ### Administración de metodologías
 
