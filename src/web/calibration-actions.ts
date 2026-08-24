@@ -9,17 +9,13 @@ import { appendSecurityAuditEvent, getAppContext } from "./runtime.js";
 export async function createCalibrationRunAction(formData: FormData): Promise<void> {
   const context = await getAppContext("MANAGE_CALIBRATION");
   const name = requiredText(formData, "name");
-  const methodologyVersionId = requiredText(formData, "methodologyVersionId");
-  const partitionValue = requiredText(formData, "partition");
-  if (partitionValue !== "CALIBRATION" && partitionValue !== "HOLDOUT") {
-    throw new Error("Partición de calibración inválida.");
-  }
+  const scope = parseScope(requiredText(formData, "scope"));
   const candidateLabel = optionalText(formData, "candidateLabel");
   const service = new CalibrationService(context.pool);
   const created = await service.createRun(context.organization.id, {
     name,
-    methodologyVersionId,
-    partition: partitionValue,
+    methodologyVersionId: scope.methodologyVersionId,
+    partition: scope.partition,
     candidateSource: "MANUAL",
     candidateLabel,
     createdByUserId: context.access.user.id,
@@ -79,6 +75,20 @@ export async function completeCalibrationRunAction(formData: FormData): Promise<
   );
   revalidatePath("/calibration");
   revalidatePath(`/calibration/${runId}`);
+}
+
+function parseScope(value: string): {
+  methodologyVersionId: string;
+  partition: "CALIBRATION" | "HOLDOUT";
+} {
+  const parts = value.split("::");
+  if (parts.length !== 2) throw new Error("Conjunto de calibración inválido.");
+  const methodologyVersionId = parts[0]?.trim() ?? "";
+  const partition = parts[1]?.trim() ?? "";
+  if (methodologyVersionId === "" || (partition !== "CALIBRATION" && partition !== "HOLDOUT")) {
+    throw new Error("Conjunto de calibración inválido.");
+  }
+  return { methodologyVersionId, partition };
 }
 
 function requiredText(formData: FormData, key: string): string {
