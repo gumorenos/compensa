@@ -28,6 +28,8 @@ export default async function GoldStandardCoveragePage() {
       <dl className="metadata card card-pad" style={{ marginBottom: 24 }}>
         <div><dt>Referencias totales</dt><dd>{totals.totalCases}</dd></div>
         <div><dt>Validadas</dt><dd>{totals.validatedCases}</dd></div>
+        <div><dt>Draft</dt><dd>{totals.draftCases}</dd></div>
+        <div><dt>Archivadas</dt><dd>{totals.archivedCases}</dd></div>
         <div><dt>CALIBRATION</dt><dd>{totals.calibrationCases}</dd></div>
         <div><dt>HOLDOUT</dt><dd>{totals.holdoutCases}</dd></div>
         <div><dt>Sin asignar</dt><dd>{totals.unassignedCases}</dd></div>
