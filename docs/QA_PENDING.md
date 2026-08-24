@@ -20,6 +20,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Actor transaccional en SUBMITTED / RETURNED / APPROVED.
 - Gold Standard: captura/importación, reproducción determinística, import multi-caso atómico, rollback, aislamiento tenant, dry-run e inmutabilidad SQL de snapshots validados.
 - Gold Standard completo —listado, detalle, importación y cobertura— protegido por `MANAGE_GOLD_STANDARD` para evitar revelar referencias HOLDOUT a EVALUATOR/REVIEWER.
+- Navegación principal derivada de la membresía activa: Gold Standard solo se renderiza con `MANAGE_GOLD_STANDARD`; los links ya no están hard-coded en el layout y sin contexto de acceso no se muestran destinos de aplicación.
 - Administración de metodologías: parser estructural, DSL permitido, dry-run, duplicados, aislamiento, concurrencia e inmutabilidad de versiones publicadas.
 - Selección de metodología ACTIVE al iniciar nuevas valoraciones.
 - Excel/CSV: CSV coma/punto y coma/tab, XLSX, agrupación Gold Standard, metodología tabular, rechazo de fórmulas y pruebas de plantillas.
@@ -41,13 +42,14 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar logout y rechazo de sesión cerrada.
 - Probar expiración/renovación de sesión en staging.
 - Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos.
+- Confirmar visualmente que ADMIN ve Puestos / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Puestos / Metodologías / Calibración pero no Gold Standard.
+- Confirmar que `/sign-in` y una request sin membership no muestran links de aplicación en la barra superior.
 - Intentar Server Actions manualmente con rol sin permiso y confirmar rechazo backend aunque se manipule HTML.
-- Probar usuario con memberships en dos organizaciones y aislamiento al cambiar organización activa.
+- Probar usuario con memberships en dos organizaciones y aislamiento al cambiar organización activa; confirmar además que la navegación se refresca con el rol de la nueva organización.
 - Probar cookie de organización inexistente/no autorizada.
-- Desactivar membership y organización y confirmar pérdida inmediata de acceso.
+- Desactivar membership y organización y confirmar pérdida inmediata de acceso y desaparición de links de aplicación.
 - Confirmar actor correcto en historial de envío, devolución y aprobación.
-- Confirmar que EVALUATOR y REVIEWER reciben `FORBIDDEN` al abrir `/gold-standard`, `/gold-standard/<caseId>` y `/gold-standard/coverage`, sin puntos, grados, decisiones ni metadatos del dataset experto en la respuesta.
-- La navegación principal todavía muestra enlaces estáticos como Gold Standard a roles que no pueden abrirlos; crear navegación consciente de rol para evitar ese callejón de UX. El backend ya debe permanecer bloqueado aunque el enlace exista.
+- Confirmar que EVALUATOR y REVIEWER reciben `FORBIDDEN` al abrir `/gold-standard`, `/gold-standard/<caseId>` y `/gold-standard/coverage`, sin puntos, grados, decisiones ni metadatos del dataset experto en la respuesta, incluso si escriben la URL manualmente.
 
 ### Flujo funcional de valoración
 
@@ -186,7 +188,6 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Manejo consistente de errores de Server Actions con mensajes de usuario.
 - Accesibilidad, lector de pantalla y navegación por teclado.
 - E2E automatizado de navegador (Playwright o equivalente).
-- Navegación por rol para ocultar en UI enlaces administrativos como Gold Standard, sin relajar la autorización backend.
 - Recovery de contraseña y correo transaccional.
 - Evaluar MFA/SSO según cliente.
 - Rate limiting distribuido si hay múltiples instancias.
