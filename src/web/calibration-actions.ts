@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CalibrationService } from "../application/calibration-service.js";
 import type { ValuationSelections } from "../domain/methodology.js";
-import { appendSecurityAuditEvent, getAppContext } from "./runtime.js";
+import { getAppContext } from "./runtime.js";
 
 export async function createCalibrationRunAction(formData: FormData): Promise<void> {
   const context = await getAppContext("MANAGE_CALIBRATION");
@@ -20,17 +20,6 @@ export async function createCalibrationRunAction(formData: FormData): Promise<vo
     candidateLabel,
     createdByUserId: context.access.user.id,
   });
-  await appendSecurityAuditEvent(
-    context,
-    "CALIBRATION_RUN_CREATED",
-    "CALIBRATION_RUN",
-    created.run.id,
-    {
-      partition: created.run.partition,
-      methodologyVersionId: created.run.methodologyVersionId,
-      caseCount: created.cases.length,
-    },
-  );
   revalidatePath("/calibration");
   redirect(`/calibration/${created.run.id}`);
 }
@@ -58,20 +47,10 @@ export async function saveCalibrationCaseAction(formData: FormData): Promise<voi
 export async function completeCalibrationRunAction(formData: FormData): Promise<void> {
   const context = await getAppContext("MANAGE_CALIBRATION");
   const runId = requiredText(formData, "runId");
-  const completed = await new CalibrationService(context.pool).completeRun(
+  await new CalibrationService(context.pool).completeRun(
     context.organization.id,
     runId,
-  );
-  await appendSecurityAuditEvent(
-    context,
-    "CALIBRATION_RUN_COMPLETED",
-    "CALIBRATION_RUN",
-    completed.id,
-    {
-      partition: completed.partition,
-      methodologyVersionId: completed.methodologyVersionId,
-      summary: completed.summary,
-    },
+    context.access.user.id,
   );
   revalidatePath("/calibration");
   revalidatePath(`/calibration/${runId}`);
