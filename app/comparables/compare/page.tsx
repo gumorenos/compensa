@@ -46,6 +46,17 @@ function metadataLabel(value: string | null): string {
   return value === null || value.trim() === "" ? "—" : value;
 }
 
+function comparisonLabel(value: "SAME_LEVEL" | "ALL_MISSING" | "DIFFERENT"): string {
+  switch (value) {
+    case "SAME_LEVEL":
+      return "Mismo nivel";
+    case "ALL_MISSING":
+      return "Sin decisión en todos";
+    case "DIFFERENT":
+      return "Diferente";
+  }
+}
+
 export default async function SideBySideComparisonPage({ searchParams }: SideBySideComparisonPageProps) {
   const params = await searchParams;
   const data = await getSideBySideComparisonPageData(requestedIds(params.valuationId));
@@ -200,7 +211,7 @@ export default async function SideBySideComparisonPage({ searchParams }: SideByS
                 <span className="eyebrow">Matriz metodológica</span>
                 <h2 style={{ marginTop: 6 }}>Decisiones por dimensión</h2>
               </div>
-              <span className="badge">{data.report.dimensions.filter((row) => !row.allEqual).length} con diferencias</span>
+              <span className="badge">{data.report.dimensions.filter((row) => row.comparison === "DIFFERENT").length} con diferencias</span>
             </div>
             <div className="table-wrap">
               <table>
@@ -220,7 +231,7 @@ export default async function SideBySideComparisonPage({ searchParams }: SideByS
                         <strong>{row.dimensionName}</strong>
                         <div className="muted">{row.factorName} · <code>{row.dimensionCode}</code>{row.required ? " · obligatoria" : ""}</div>
                       </td>
-                      <td>{row.allEqual ? "Mismo nivel" : "Diferente"}</td>
+                      <td>{comparisonLabel(row.comparison)}</td>
                       {row.cells.map((cell) => (
                         <td key={cell.valuationId}>
                           {cell.levelCode === null ? (
