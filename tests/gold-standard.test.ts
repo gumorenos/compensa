@@ -35,6 +35,8 @@ describe("Gold Standard comparison", () => {
       referenceGradeCode: "G3",
       candidateGradeCode: "G3",
       gradeMatch: true,
+      gradeDistance: 0,
+      gradeWithinOne: true,
     });
   });
 
@@ -56,6 +58,8 @@ describe("Gold Standard comparison", () => {
     expect(result.metrics.pointDelta).toBe(21);
     expect(result.metrics.absolutePointDifference).toBe(21);
     expect(result.metrics.gradeMatch).toBe(true);
+    expect(result.metrics.gradeDistance).toBe(0);
+    expect(result.metrics.gradeWithinOne).toBe(true);
 
     expect(result.dimensions.find((item) => item.dimensionCode === "AUTONOMY"))
       .toMatchObject({
@@ -65,6 +69,24 @@ describe("Gold Standard comparison", () => {
         exactMatch: false,
         withinOneLevel: true,
       });
+  });
+
+  it("measures grade adjacency using point-range order", () => {
+    const result = compareAgainstGoldStandard(reference, {
+      ...demoMidLevelSelections,
+      DOMAIN_KNOWLEDGE: "K3",
+      KNOWLEDGE_BREADTH: "B3",
+      PROBLEM_COMPLEXITY: "C3",
+      AUTONOMY: "A3",
+      IMPACT_SCOPE: "S3",
+      PEOPLE_SCOPE: "P2",
+    });
+
+    expect(result.status).toBe("SUCCESS");
+    if (result.status !== "SUCCESS") return;
+    expect(result.metrics.candidateGradeCode).not.toBe(result.metrics.referenceGradeCode);
+    expect(result.metrics.gradeDistance).toBeGreaterThan(0);
+    expect(result.metrics.gradeWithinOne).toBe(result.metrics.gradeDistance <= 1);
   });
 
   it("rejects an invalid candidate instead of manufacturing comparison metrics", () => {
