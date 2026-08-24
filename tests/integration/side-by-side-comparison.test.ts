@@ -129,6 +129,21 @@ describe("Side-by-side comparison persistence boundary", () => {
     });
   });
 
+  it("rejects malformed valuation IDs before PostgreSQL UUID casting", async () => {
+    const organization = await repository.createOrganization({
+      slug: "side-by-side-malformed",
+      name: "Side by Side Malformed",
+      currencyCode: "PEN",
+    });
+
+    await expect(
+      comparison.getReport(organization.id, [
+        "not-a-uuid",
+        "00000000-0000-0000-0000-000000000001",
+      ]),
+    ).rejects.toMatchObject({ code: "VALUATION_NOT_AVAILABLE" });
+  });
+
   it("rejects two approved valuations from different methodology versions in the same tenant", async () => {
     const organization = await repository.createOrganization({
       slug: "side-by-side-methods",
