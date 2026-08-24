@@ -76,7 +76,7 @@ interface DecisionRow {
   selected_level_code: string;
 }
 
-interface ComparableSnapshot extends ApprovedValuationSummary {
+export interface ComparableSnapshot extends ApprovedValuationSummary {
   decisions: ReadonlyMap<string, string>;
 }
 
