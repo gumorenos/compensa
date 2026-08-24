@@ -67,6 +67,8 @@ export default async function CalibrationRunPage({
             <div><dt>Dimensión exacta</dt><dd>{pct(view.liveSummary.exactDimensionAgreementRate)}</dd></div>
             <div><dt>Dimensión ±1 nivel</dt><dd>{pct(view.liveSummary.withinOneLevelRate)}</dd></div>
             <div><dt>Grado exacto</dt><dd>{pct(view.liveSummary.gradeMatchRate)}</dd></div>
+            <div><dt>Grado ±1</dt><dd>{pct(view.liveSummary.gradeWithinOneRate)}</dd></div>
+            <div><dt>Distancia grado media</dt><dd>{num(view.liveSummary.meanGradeDistance)}</dd></div>
             <div><dt>MAE puntos</dt><dd>{num(view.liveSummary.meanAbsolutePointDifference)}</dd></div>
             <div><dt>MAPE puntos</dt><dd>{view.liveSummary.meanAbsolutePointDifferencePercent === null ? "—" : `${view.liveSummary.meanAbsolutePointDifferencePercent.toFixed(2)}%`}</dd></div>
             <div><dt>Sesgo medio puntos</dt><dd>{num(view.liveSummary.meanSignedPointDelta)}</dd></div>
@@ -164,7 +166,9 @@ export default async function CalibrationRunPage({
                       <div><dt>Diferencia</dt><dd>{item.comparison.metrics.pointDelta > 0 ? "+" : ""}{item.comparison.metrics.pointDelta}</dd></div>
                       <div><dt>Grado experto</dt><dd>{item.comparison.metrics.referenceGradeCode}</dd></div>
                       <div><dt>Grado candidato</dt><dd>{item.comparison.metrics.candidateGradeCode}</dd></div>
+                      <div><dt>Distancia grado</dt><dd>{item.comparison.metrics.gradeDistance}</dd></div>
                       <div><dt>Grado exacto</dt><dd>{item.comparison.metrics.gradeMatch ? "Sí" : "No"}</dd></div>
+                      <div><dt>Grado ±1</dt><dd>{item.comparison.metrics.gradeWithinOne ? "Sí" : "No"}</dd></div>
                     </dl>
                   </div>
                 )}
@@ -197,11 +201,11 @@ export default async function CalibrationRunPage({
           <div className="card-pad">
             <span className="eyebrow">Revisión</span>
             <h2 style={{ marginTop: 6 }}>Mayores desviaciones observadas</h2>
-            <p className="muted" style={{ marginBottom: 0 }}>Ordenadas primero por discrepancia de grado y luego por diferencia absoluta de puntos. No se etiqueta ningún caso como outlier sin un criterio acordado.</p>
+            <p className="muted" style={{ marginBottom: 0 }}>Ordenadas primero por discrepancia/distancia de grado y luego por diferencia absoluta de puntos. No se etiqueta ningún caso como outlier sin un criterio acordado.</p>
           </div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Caso</th><th>Diferencia puntos</th><th>Grado experto</th><th>Grado candidato</th><th>Distancia máxima nivel</th></tr></thead>
+              <thead><tr><th>Caso</th><th>Diferencia puntos</th><th>Grado experto</th><th>Grado candidato</th><th>Distancia grado</th><th>Distancia máxima nivel</th></tr></thead>
               <tbody>
                 {view.deviations.map((item) => (
                   <tr key={item.caseId}>
@@ -209,6 +213,7 @@ export default async function CalibrationRunPage({
                     <td>{item.comparison?.metrics.absolutePointDifference ?? "—"}</td>
                     <td>{item.referenceGradeCode}</td>
                     <td>{item.candidateGradeCode ?? "—"}</td>
+                    <td>{item.comparison?.metrics.gradeDistance ?? "—"}</td>
                     <td>{item.comparison?.metrics.maxLevelDistance ?? "—"}</td>
                   </tr>
                 ))}
