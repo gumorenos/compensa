@@ -36,8 +36,10 @@ function valuation(
 function decisions(overrides: Record<string, string | null> = {}) {
   const map = new Map<string, string>();
   for (const [dimensionCode, defaultLevel] of Object.entries(demoMidLevelSelections)) {
-    const selected = overrides[dimensionCode] ?? defaultLevel;
-    if (selected !== null) map.set(dimensionCode, selected);
+    const selected = Object.prototype.hasOwnProperty.call(overrides, dimensionCode)
+      ? overrides[dimensionCode]
+      : defaultLevel;
+    if (selected !== null && selected !== undefined) map.set(dimensionCode, selected);
   }
   return map;
 }
