@@ -87,6 +87,12 @@ export class SideBySideComparisonService {
         "Select between 2 and 5 approved valuations.",
       );
     }
+    if (valuationIds.some((id) => !isUuid(id))) {
+      throw new SideBySideComparisonError(
+        "VALUATION_NOT_AVAILABLE",
+        "One or more selected valuations are unavailable for comparison.",
+      );
+    }
 
     const result = await this.pool.query(
       `SELECT
@@ -256,6 +262,10 @@ function uniqueIds(values: readonly string[]): string[] {
     result.push(trimmed);
   }
   return result;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function summaryFromRow(row: ComparisonValuationRow): ApprovedValuationSummary {
