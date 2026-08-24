@@ -20,12 +20,14 @@ function metric(overrides: Partial<GoldStandardMetrics> = {}): GoldStandardMetri
     referenceGradeCode: "G3",
     candidateGradeCode: "G3",
     gradeMatch: true,
+    gradeDistance: 0,
+    gradeWithinOne: true,
     ...overrides,
   };
 }
 
 describe("calibration metric aggregation", () => {
-  it("aggregates dimensions by count instead of averaging case percentages", () => {
+  it("aggregates dimensions by count and grade adjacency by case", () => {
     const summary = aggregateCalibrationMetrics([
       metric({ dimensionCount: 2, exactMatchCount: 2, withinOneLevelCount: 2 }),
       metric({
@@ -33,6 +35,8 @@ describe("calibration metric aggregation", () => {
         exactMatchCount: 4,
         withinOneLevelCount: 6,
         gradeMatch: false,
+        gradeDistance: 1,
+        gradeWithinOne: true,
         candidateGradeCode: "G4",
         pointDelta: 20,
         absolutePointDifference: 20,
@@ -48,6 +52,9 @@ describe("calibration metric aggregation", () => {
     expect(summary.exactDimensionAgreementRate).toBeCloseTo(0.6);
     expect(summary.withinOneLevelRate).toBeCloseTo(0.8);
     expect(summary.gradeMatchRate).toBeCloseTo(0.5);
+    expect(summary.gradeWithinOneRate).toBe(1);
+    expect(summary.meanGradeDistance).toBeCloseTo(0.5);
+    expect(summary.maxGradeDistance).toBe(1);
     expect(summary.meanSignedPointDelta).toBeCloseTo(10);
     expect(summary.meanAbsolutePointDifference).toBeCloseTo(10);
     expect(summary.meanAbsolutePointDifferencePercent).toBeCloseTo(5);
@@ -72,14 +79,31 @@ describe("calibration metric aggregation", () => {
     expect(summary.maxLevelDistance).toBeNull();
   });
 
-  it("orders grade mismatches before same-grade point deviations", () => {
+  it("orders larger grade deviations before same-grade point deviations", () => {
     const exact = { id: "exact", metrics: metric({ absolutePointDifference: 50 }) };
-    const mismatch = {
-      id: "mismatch",
-      metrics: metric({ gradeMatch: false, candidateGradeCode: "G4", absolutePointDifference: 5 }),
+    const adjacent = {
+      id: "adjacent",
+      metrics: metric({
+        gradeMatch: false,
+        gradeDistance: 1,
+        gradeWithinOne: true,
+        candidateGradeCode: "G4",
+        absolutePointDifference: 20,
+      }),
     };
-    expect(orderCalibrationDeviations([exact, mismatch]).map((item) => item.id)).toEqual([
-      "mismatch",
+    const farther = {
+      id: "farther",
+      metrics: metric({
+        gradeMatch: false,
+        gradeDistance: 2,
+        gradeWithinOne: false,
+        candidateGradeCode: "G5",
+        absolutePointDifference: 5,
+      }),
+    };
+    expect(orderCalibrationDeviations([exact, adjacent, farther]).map((item) => item.id)).toEqual([
+      "farther",
+      "adjacent",
       "exact",
     ]);
   });
