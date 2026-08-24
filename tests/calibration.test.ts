@@ -29,7 +29,12 @@ function metric(overrides: Partial<GoldStandardMetrics> = {}): GoldStandardMetri
 describe("calibration metric aggregation", () => {
   it("aggregates dimensions by count and grade adjacency by case", () => {
     const summary = aggregateCalibrationMetrics([
-      metric({ dimensionCount: 2, exactMatchCount: 2, withinOneLevelCount: 2 }),
+      metric({
+        dimensionCount: 2,
+        exactMatchCount: 2,
+        withinOneLevelCount: 2,
+        comparableDistanceCount: 2,
+      }),
       metric({
         dimensionCount: 8,
         exactMatchCount: 4,
