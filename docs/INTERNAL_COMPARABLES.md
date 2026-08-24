@@ -15,7 +15,7 @@ Esta funcionalidad **no consulta Gold Standard, CALIBRATION ni HOLDOUT**. Esto e
 Para cada candidato compatible se muestran hechos observables:
 
 - puntos y diferencia de puntos respecto de la base;
-- grado y distancia ordinal de grado según el orden definido en el snapshot metodológico;
+- grado y distancia ordinal de grado según los rangos de puntos de la metodología;
 - cantidad de dimensiones comparadas;
 - cantidad de dimensiones con nivel exacto;
 - suma de saltos de nivel en las dimensiones diferentes;
@@ -24,11 +24,13 @@ Para cada candidato compatible se muestran hechos observables:
 - coincidencia de departamento;
 - si se trata de otra versión aprobada del mismo puesto.
 
-Familia y departamento se muestran como contexto. **No alteran silenciosamente el orden del ranking.**
+Familia y departamento se muestran como contexto. **No alteran silenciosamente el orden del ranking.** Los valores vacíos tampoco se consideran coincidencias.
 
 ## Orden de presentación
 
 No existe un `similarity score` compuesto.
+
+Antes de calcular `Δ grado`, los grados se ordenan por `minPoints` ascendente (con `maxPoints` y código como desempates determinísticos). Por tanto, la distancia ordinal no depende del orden accidental en que los grados aparezcan dentro del JSON importado.
 
 Los candidatos se ordenan lexicográficamente por:
 
