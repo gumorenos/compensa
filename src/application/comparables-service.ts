@@ -188,7 +188,13 @@ export function buildInternalComparablesReport(
   base: ComparableSnapshot,
   candidates: readonly ComparableSnapshot[],
 ): InternalComparablesReport {
-  const gradeIndexes = new Map(methodology.grades.map((grade, index) => [grade.code, index]));
+  const orderedGrades = [...methodology.grades].sort(
+    (left, right) =>
+      left.minPoints - right.minPoints ||
+      left.maxPoints - right.maxPoints ||
+      left.code.localeCompare(right.code),
+  );
+  const gradeIndexes = new Map(orderedGrades.map((grade, index) => [grade.code, index]));
   const dimensionDefinitions = methodology.factors.flatMap((factor) =>
     factor.dimensions.map((dimension) => ({ factor, dimension })),
   );
@@ -308,5 +314,8 @@ function levelLabel(
 
 function sameNormalized(left: string | null, right: string | null): boolean {
   if (left === null || right === null) return false;
-  return left.trim().toLocaleLowerCase("es") === right.trim().toLocaleLowerCase("es");
+  const normalizedLeft = left.trim().toLocaleLowerCase("es");
+  const normalizedRight = right.trim().toLocaleLowerCase("es");
+  if (normalizedLeft === "" || normalizedRight === "") return false;
+  return normalizedLeft === normalizedRight;
 }
