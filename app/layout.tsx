@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AppNavLinks } from "./app-nav-links.js";
 import { SessionNav } from "./session-nav.js";
 import "./globals.css";
 import "./workflow.css";
@@ -24,10 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </span>
             </Link>
             <nav className="nav" aria-label="Navegación principal">
-              <Link href="/">Puestos</Link>
-              <Link href="/methodologies">Metodologías</Link>
-              <Link href="/gold-standard">Gold Standard</Link>
-              <Link href="/calibration">Calibración</Link>
+              <AppNavLinks />
               <SessionNav />
             </nav>
           </div>
