@@ -225,6 +225,21 @@ export class CalibrationService {
         throw new PersistenceError("CALIBRATION_CASE_NOT_FOUND", "Calibration case was not found in this run.");
       }
 
+      const allowedDimensions = new Set(
+        item.methodologySnapshot.factors.flatMap((factor) =>
+          factor.dimensions.map((dimension) => dimension.code),
+        ),
+      );
+      const unknownDimensions = Object.keys(candidateSelections).filter(
+        (dimensionCode) => !allowedDimensions.has(dimensionCode),
+      );
+      if (unknownDimensions.length > 0) {
+        throw new PersistenceError(
+          "CALIBRATION_UNKNOWN_DIMENSION",
+          `Candidate contains dimensions outside the frozen methodology: ${unknownDimensions.join(", ")}.`,
+        );
+      }
+
       const comparison = compareAgainstGoldStandard(
         {
           methodology: item.methodologySnapshot,
