@@ -22,6 +22,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Gold Standard completo —listado, detalle, importación y cobertura— protegido por `MANAGE_GOLD_STANDARD` para evitar revelar referencias HOLDOUT a EVALUATOR/REVIEWER.
 - Navegación principal derivada de la membresía activa: Gold Standard solo se renderiza con `MANAGE_GOLD_STANDARD`; los links ya no están hard-coded en el layout y sin contexto de acceso no se muestran destinos de aplicación.
 - Comparables internos: solo valoraciones `APPROVED` del tenant activo y de la misma versión metodológica; diferencias de puntos/grado/niveles, ranking determinístico, detección explícita de historial del mismo puesto, aislamiento tenant y contrato que prohíbe consultar Gold Standard/HOLDOUT o inventar similarity/outlier scores.
+- Comparación lado a lado 2–5: IDs únicos, solo `APPROVED`, tenant activo, misma versión metodológica, orden de columnas estable, resumen de puntos/grados, matriz por dimensión con estados `SAME_LEVEL` / `ALL_MISSING` / `DIFFERENT`, rechazo de DRAFT/cross-tenant/mismatch y contrato sin Gold Standard/HOLDOUT ni score/veredicto automático.
 - Administración de metodologías: parser estructural, DSL permitido, dry-run, duplicados, aislamiento, concurrencia e inmutabilidad de versiones publicadas.
 - Selección de metodología ACTIVE al iniciar nuevas valoraciones.
 - Excel/CSV: CSV coma/punto y coma/tab, XLSX, agrupación Gold Standard, metodología tabular, rechazo de fórmulas y pruebas de plantillas.
@@ -83,6 +84,23 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar que la pantalla no muestra ni permite inferir Gold Standard, CALIBRATION o HOLDOUT y que no añade una ruta alternativa al dataset experto.
 - Confirmar que ningún copy presenta el ranking como equivalencia, PASS/FAIL, similarity score, outlier automático o recomendación de grado.
 - Revisar 20+ comparables, detalles largos y tablas en desktop y móvil.
+
+### Comparación lado a lado 2–5
+
+- Abrir `/comparables/compare` como ADMIN, EVALUATOR y REVIEWER y confirmar acceso de solo lectura mediante `VIEW`.
+- Seleccionar exactamente 2, 3, 4 y 5 valoraciones APPROVED de la misma versión metodológica y confirmar que el orden visible de columnas coincide con el orden elegido.
+- Intentar 0, 1 y más de 5 selecciones y confirmar mensaje seguro sin comparación parcial.
+- Repetir el mismo `valuationId` varias veces en la URL y confirmar que no cuenta como varias valoraciones.
+- Manipular la URL con una valoración DRAFT/no aprobada o de otro tenant y confirmar “no disponible” sin revelar nombre, puntos, grado ni metadata ajena.
+- Mezclar dos versiones metodológicas del mismo tenant y confirmar rechazo explícito por incompatibilidad, sin normalización de escalas.
+- Cotejar puntos mínimo/máximo, spread observado y grados contra las valoraciones fuente.
+- Cotejar cada fila factor/dimensión con los niveles guardados en las 2–5 valoraciones.
+- Confirmar visualmente los tres estados de fila: `Mismo nivel`, `Sin decisión en todos` y `Diferente`; una ausencia compartida no debe presentarse como equivalencia.
+- Abrir cada enlace “Abrir valoración” y confirmar que apunta al histórico exacto usado en la comparación.
+- Confirmar que familia/departamento/área son contexto descriptivo y no producen score, ranking ni veredicto.
+- Confirmar que la pantalla no muestra ni permite inferir Gold Standard, CALIBRATION o HOLDOUT.
+- Revisar una metodología con muchas dimensiones y cinco columnas en desktop/tablet/móvil; verificar scroll horizontal, textos largos, códigos y legibilidad.
+- Confirmar que ningún copy presenta diferencias como error, equivalencia, PASS/FAIL, outlier o recomendación automática de grado.
 
 ### Administración de metodologías
 
