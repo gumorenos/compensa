@@ -68,11 +68,15 @@ Los códigos actuales describen únicamente ceros o datos faltantes:
 
 Que aparezca uno de estos hechos **no significa automáticamente que el dataset sea inválido**. Por ejemplo, una metodología usada solo para ciertos niveles podría no necesitar representar todos sus grados en una prueba concreta. La decisión sigue siendo del especialista.
 
-## Aislamiento y permisos
+## Aislamiento, holdout y permisos
 
-La vista usa permiso `VIEW`; es completamente read-only.
+La vista es completamente read-only, pero requiere `MANAGE_GOLD_STANDARD`; en la matriz actual eso significa **ADMIN únicamente**.
 
-Todas las consultas se filtran por `organization_id`. Las decisiones y evidencias se agregan mediante las foreign keys tenant-aware existentes y nunca se consultan globalmente para formar un reporte.
+Esta restricción es deliberada: el Gold Standard contiene las decisiones expertas y resultados que sirven como referencia. Si EVALUATOR o REVIEWER pudieran abrir el dataset completo, podrían conocer el resultado de casos `HOLDOUT` antes de cerrar una corrida y contaminar la evaluación. Por el mismo motivo, el listado y el detalle completos del Gold Standard también requieren `MANAGE_GOLD_STANDARD`.
+
+Las corridas de calibración pueden seguir consultándose con permisos normales: mientras una corrida HOLDOUT está `DRAFT`, su propia UI oculta decisiones expertas, puntos, grados y métricas de referencia hasta el cierre.
+
+Todas las consultas del dashboard se filtran por `organization_id`. Las decisiones y evidencias se agregan mediante las foreign keys tenant-aware existentes y nunca se consultan globalmente para formar un reporte.
 
 No se añade ninguna tabla, migración ni superficie de escritura.
 
