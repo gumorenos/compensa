@@ -9,6 +9,10 @@ export interface CalibrationSummary {
   withinOneLevelRate: number;
   gradeMatchCount: number;
   gradeMatchRate: number;
+  gradeWithinOneCount: number;
+  gradeWithinOneRate: number;
+  meanGradeDistance: number;
+  maxGradeDistance: number;
   meanSignedPointDelta: number;
   meanAbsolutePointDifference: number;
   meanAbsolutePointDifferencePercent: number | null;
@@ -29,6 +33,10 @@ export function aggregateCalibrationMetrics(metrics: readonly GoldStandardMetric
       withinOneLevelRate: 1,
       gradeMatchCount: 0,
       gradeMatchRate: 1,
+      gradeWithinOneCount: 0,
+      gradeWithinOneRate: 1,
+      meanGradeDistance: 0,
+      maxGradeDistance: 0,
       meanSignedPointDelta: 0,
       meanAbsolutePointDifference: 0,
       meanAbsolutePointDifferencePercent: null,
@@ -44,6 +52,9 @@ export function aggregateCalibrationMetrics(metrics: readonly GoldStandardMetric
   const exactDimensionAgreementCount = metrics.reduce((sum, item) => sum + item.exactMatchCount, 0);
   const withinOneLevelCount = metrics.reduce((sum, item) => sum + item.withinOneLevelCount, 0);
   const gradeMatchCount = metrics.filter((item) => item.gradeMatch).length;
+  const gradeWithinOneCount = metrics.filter((item) => item.gradeWithinOne).length;
+  const meanGradeDistance = average(metrics.map((item) => item.gradeDistance));
+  const maxGradeDistance = Math.max(...metrics.map((item) => item.gradeDistance));
   const meanSignedPointDelta = average(metrics.map((item) => item.pointDelta));
   const meanAbsolutePointDifference = average(metrics.map((item) => item.absolutePointDifference));
   const percentageValues = metrics
@@ -70,6 +81,10 @@ export function aggregateCalibrationMetrics(metrics: readonly GoldStandardMetric
     withinOneLevelRate: rate(withinOneLevelCount, dimensionCount),
     gradeMatchCount,
     gradeMatchRate: rate(gradeMatchCount, caseCount),
+    gradeWithinOneCount,
+    gradeWithinOneRate: rate(gradeWithinOneCount, caseCount),
+    meanGradeDistance,
+    maxGradeDistance,
     meanSignedPointDelta,
     meanAbsolutePointDifference,
     meanAbsolutePointDifferencePercent:
@@ -88,6 +103,9 @@ export function orderCalibrationDeviations<T extends { metrics: GoldStandardMetr
   return [...items].sort((left, right) => {
     if (left.metrics.gradeMatch !== right.metrics.gradeMatch) {
       return left.metrics.gradeMatch ? 1 : -1;
+    }
+    if (left.metrics.gradeDistance !== right.metrics.gradeDistance) {
+      return right.metrics.gradeDistance - left.metrics.gradeDistance;
     }
     const pointDifference = right.metrics.absolutePointDifference - left.metrics.absolutePointDifference;
     if (pointDifference !== 0) return pointDifference;
