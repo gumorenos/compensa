@@ -197,6 +197,20 @@ export class CalibrationService {
         );
       }
 
+      if (input.createdByUserId !== undefined && input.createdByUserId !== null) {
+        await appendCalibrationAudit(client, {
+          organizationId,
+          actorUserId: input.createdByUserId,
+          action: "CALIBRATION_RUN_CREATED",
+          runId: run.id,
+          payload: {
+            partition: run.partition,
+            methodologyVersionId: run.methodologyVersionId,
+            caseCount: eligible.rows.length,
+          },
+        });
+      }
+
       const created = await this.calibration.getRunBundle(organizationId, run.id, client);
       if (created === null) {
         throw new PersistenceError("DATABASE_INVARIANT", "Calibration run disappeared during creation.");
@@ -272,7 +286,11 @@ export class CalibrationService {
     });
   }
 
-  async completeRun(organizationId: string, runId: string): Promise<CalibrationRun> {
+  async completeRun(
+    organizationId: string,
+    runId: string,
+    actorUserId?: string | null,
+  ): Promise<CalibrationRun> {
     return this.calibration.transaction(async (client) => {
       await lockRun(client, runId);
       const bundle = await this.calibration.getRunBundle(organizationId, runId, client);
@@ -297,7 +315,21 @@ export class CalibrationService {
         throw new PersistenceError("DATABASE_INVARIANT", "A completed calibration candidate has no metrics.");
       }
       const summary = aggregateCalibrationMetrics(metrics.filter((item) => item !== null));
-      return this.calibration.completeRun(organizationId, runId, summary, client);
+      const completed = await this.calibration.completeRun(organizationId, runId, summary, client);
+      if (actorUserId !== undefined && actorUserId !== null) {
+        await appendCalibrationAudit(client, {
+          organizationId,
+          actorUserId,
+          action: "CALIBRATION_RUN_COMPLETED",
+          runId,
+          payload: {
+            partition: completed.partition,
+            methodologyVersionId: completed.methodologyVersionId,
+            summary: completed.summary,
+          },
+        });
+      }
+      return completed;
     });
   }
 
@@ -321,6 +353,32 @@ export class CalibrationService {
       ).map(({ metrics: _metrics, ...item }) => item),
     };
   }
+}
+
+interface CalibrationAuditInput {
+  organizationId: string;
+  actorUserId: string;
+  action: "CALIBRATION_RUN_CREATED" | "CALIBRATION_RUN_COMPLETED";
+  runId: string;
+  payload: Record<string, unknown>;
+}
+
+async function appendCalibrationAudit(
+  client: PoolClient,
+  input: CalibrationAuditInput,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO security_audit_events
+      (organization_id, actor_user_id, action, resource_type, resource_id, payload)
+     VALUES ($1, $2, $3, 'CALIBRATION_RUN', $4, $5::jsonb)`,
+    [
+      input.organizationId,
+      input.actorUserId,
+      input.action,
+      input.runId,
+      JSON.stringify(input.payload),
+    ],
+  );
 }
 
 async function lockRun(client: PoolClient, runId: string): Promise<void> {
