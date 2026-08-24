@@ -10,7 +10,7 @@ export interface GoldStandardCoveragePageData {
 }
 
 export async function getGoldStandardCoveragePageData(): Promise<GoldStandardCoveragePageData> {
-  const context = await getAppContext("VIEW");
+  const context = await getAppContext("MANAGE_GOLD_STANDARD");
   const report = await new GoldStandardCoverageService(context.pool).getReport(context.organization.id);
   return { context, report };
 }
