@@ -28,11 +28,16 @@ export default async function GoldStandardPage() {
             Referencias expertas inmutables para calibrar y evaluar futuras propuestas automáticas sin mezclar el conjunto de ajuste con el holdout.
           </p>
         </div>
-        {data.canManage && (
-          <Link className="button" href="/gold-standard/import">
-            Importar históricos
+        <div className="form-actions">
+          <Link className="button button-secondary" href="/gold-standard/coverage">
+            Ver cobertura
           </Link>
-        )}
+          {data.canManage && (
+            <Link className="button" href="/gold-standard/import">
+              Importar históricos
+            </Link>
+          )}
+        </div>
       </div>
 
       <dl className="metadata card card-pad" style={{ marginBottom: 24 }}>
