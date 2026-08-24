@@ -31,7 +31,9 @@ describe("role-aware application navigation", () => {
 
   it("keeps normal member destinations in the authenticated navigation", async () => {
     const navigation = await source("app/app-nav-links.tsx");
+    expect(navigation).toContain('href="/overview"');
     expect(navigation).toContain('href="/"');
+    expect(navigation).toContain('href="/valuations"');
     expect(navigation).toContain('href="/methodologies"');
     expect(navigation).toContain('href="/calibration"');
   });
