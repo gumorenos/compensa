@@ -51,9 +51,15 @@ function decisions(withEvidence: boolean) {
     dimensionCode,
     selectedLevelCode,
     justification: `Juicio experto ${dimensionCode}`,
-    evidence: withEvidence && index === 0
-      ? [{ sourceType: "OTHER" as const, sourceSection: "Fuente anonimizada", excerpt: "Evidencia verificable de ejemplo." }]
-      : undefined,
+    ...(withEvidence && index === 0
+      ? {
+          evidence: [{
+            sourceType: "OTHER" as const,
+            sourceSection: "Fuente anonimizada",
+            excerpt: "Evidencia verificable de ejemplo.",
+          }],
+        }
+      : {}),
   }));
 }
 
