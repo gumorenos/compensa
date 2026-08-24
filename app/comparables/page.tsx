@@ -36,6 +36,9 @@ export default async function ComparablesPage({ searchParams }: ComparablesPageP
             Compara valoraciones <b>APPROVED</b> de la misma versión metodológica para revisar consistencia horizontal y vertical. Esta vista no consulta Gold Standard ni HOLDOUT.
           </p>
         </div>
+        <Link className="button button-secondary" href="/comparables/compare">
+          Comparar 2–5 lado a lado
+        </Link>
       </div>
 
       <div className="notice" style={{ marginBottom: 24 }}>
