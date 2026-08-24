@@ -31,6 +31,8 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Contrato UI/server de spreadsheet: permisos ADMIN, dry-run repetido antes de escribir, tipos `.xlsx/.csv` e invalidación visual cuando cambia el archivo/origen.
 - Calibración: agregación ponderada de métricas, snapshot de membresía, lifecycle DRAFT → COMPLETED, bloqueo de cierre incompleto, aislamiento tenant, inmutabilidad SQL del run completado y rechazo de fuentes AI/EXTERNAL aún no integradas.
 - Contrato de calibración: `MANAGE_CALIBRATION` solo ADMIN, Server Actions protegidas y feedback HOLDOUT oculto por contrato de UI hasta completar la corrida.
+- Candidatos de calibración Excel/CSV: parser CSV/XLSX, CSV regional, rechazo de fórmulas, plantilla dinámica sin selecciones expertas, dry-run sin escrituras, validación contra metodología congelada, reemplazos en DRAFT, rollback atómico, auditoría transaccional, aislamiento tenant y bloqueo de corrida COMPLETED.
+- Cegamiento HOLDOUT en carga masiva: preview sin puntos/grado/métricas, ausencia de resumen live después del write y contrato UI que no renderiza esas columnas antes del cierre.
 
 ## Pendiente: E2E real de navegador
 
@@ -141,12 +143,34 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Como EVALUATOR y REVIEWER, abrir una corrida y confirmar modo lectura; intentar invocar manualmente create/save/complete y confirmar `FORBIDDEN`.
 - Crear una corrida `HOLDOUT`, guardar candidatos y comprobar que **no** aparecen decisiones expertas, puntos expertos, grado experto, métricas por caso ni resumen agregado mientras siga DRAFT.
 - Completar el último caso HOLDOUT y confirmar que recién entonces se revelan resumen y comparaciones.
-- Revisar la tabla “Mayores desviaciones observadas” y confirmar orden: mismatch de grado antes que diferencias de puntos, sin etiqueta automática de outlier.
+- Revisar la tabla “Mayores desviaciones observadas” y confirmar orden: mismatch/distancia de grado antes que diferencias de puntos, sin etiqueta automática de outlier.
 - Confirmar auditoría `CALIBRATION_RUN_CREATED` y `CALIBRATION_RUN_COMPLETED` con organización/actor correctos.
 - Probar navegación, selects, detalles plegables y tablas de métricas en desktop y móvil.
 - Probar nombres largos de corrida/puestos y descriptivos extensos.
 - Crear referencias de dos metodologías y comprobar que una corrida nunca mezcla metodologías.
 - Confirmar que la UI no ofrece AI/EXTERNAL como fuente funcional mientras no exista integración real.
+
+### Excel / CSV — candidatos de calibración
+
+- Como ADMIN, abrir una corrida DRAFT y entrar desde **Cargar candidatos** a `/calibration/<runId>/import`.
+- Descargar la plantilla dinámica `.xlsx` y abrirla en Microsoft Excel desktop; confirmar hojas, freeze del encabezado, textos y códigos de nivel.
+- Abrir la misma plantilla en LibreOffice Calc y comprobar que no se altera la hoja `Calibration`.
+- Descargar la versión CSV y confirmar UTF-8/acentos y apertura correcta con configuración regional de Perú.
+- Inspeccionar manualmente una plantilla HOLDOUT y confirmar que **no** contiene selecciones expertas, puntos expertos, grado experto ni métricas.
+- Completar 2–5 casos en la plantilla y ejecutar preview; en CALIBRATION cotejar manualmente puntos/grado/feedback contra una valoración conocida.
+- En HOLDOUT, confirmar visualmente que preview no muestra puntos candidato, grado candidato, referencia ni métricas y que después del write el resumen de la corrida continúa oculto.
+- Para un lote parcial, eliminar del archivo las filas de los casos que no se cargarán; confirmar que los casos incluidos se guardan y los demás permanecen pendientes.
+- Dejar incompleto uno de los casos incluidos y confirmar que el dry-run lo rechaza sin generar puntuación provisional.
+- Cambiar el archivo después de un preview válido y confirmar que **Guardar lote validado** vuelve a deshabilitarse hasta repetir dry-run.
+- Repetir un caso ya evaluado, comprobar badge/mensaje de `OVERWRITE` y verificar que el candidato anterior se reemplaza únicamente mientras la corrida siga DRAFT.
+- Probar un segundo caso con nivel inválido y confirmar en UI/DB que ningún caso del archivo queda escrito parcialmente.
+- Modificar `codigo_caso` por uno de otra corrida y confirmar mensaje genérico sin revelar etiqueta/datos del otro caso.
+- Manipular `runId` hacia una corrida de otra organización y confirmar `not found`/rechazo sin filtración de existencia.
+- Intentar fórmula en `codigo_nivel` de un XLSX y confirmar rechazo entendible.
+- Completar la corrida y confirmar que la página de importación pasa a modo bloqueado y cualquier write manual es rechazado por backend.
+- Confirmar evento `CALIBRATION_CANDIDATE_BATCH_IMPORTED` con actor, corrida, archivo, cantidad, reemplazos y códigos de caso correctos.
+- Probar tabla de preview y mensajes con 20–30 casos en desktop y móvil.
+- Confirmar que estos uploads heredan los pendientes generales de seguridad/robustez indicados más abajo (zip bomb, límites CPU/RAM, rate limiting y contenido XLSX adversarial).
 
 ## Pendiente: seguridad/robustez de uploads antes de exposición pública
 
