@@ -17,6 +17,7 @@ export async function AppNavLinks() {
   return (
     <>
       <Link href="/">Puestos</Link>
+      <Link href="/valuations">Valoraciones</Link>
       <Link href="/comparables">Comparar</Link>
       <Link href="/methodologies">Metodologías</Link>
       {roleHasPermission(access.role, "MANAGE_GOLD_STANDARD") && (

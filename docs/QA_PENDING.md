@@ -23,6 +23,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Navegación principal derivada de la membresía activa: Gold Standard solo se renderiza con `MANAGE_GOLD_STANDARD`; los links ya no están hard-coded en el layout y sin contexto de acceso no se muestran destinos de aplicación.
 - Comparables internos: solo valoraciones `APPROVED` del tenant activo y de la misma versión metodológica; diferencias de puntos/grado/niveles, ranking determinístico, detección explícita de historial del mismo puesto, aislamiento tenant y contrato que prohíbe consultar Gold Standard/HOLDOUT o inventar similarity/outlier scores.
 - Comparación lado a lado 2–5: IDs únicos, solo `APPROVED`, tenant activo, misma versión metodológica, orden de columnas estable, resumen de puntos/grados, matriz por dimensión con estados `SAME_LEVEL` / `ALL_MISSING` / `DIFFERENT`, rechazo de DRAFT/cross-tenant/mismatch y contrato sin Gold Standard/HOLDOUT ni score/veredicto automático.
+- Bandeja operativa de Valoraciones: listado tenant-safe de todas las versiones, conteos por estado, filtros parametrizados por puesto/estado/estructura/grado/metodología/iniciador/fecha, validación previa de UUID/estado/fecha, actor de inicio opcional derivado de auditoría, fechas UTC explícitas, límite declarado de 200 filas y contrato sin Gold Standard/HOLDOUT.
 - Administración de metodologías: parser estructural, DSL permitido, dry-run, duplicados, aislamiento, concurrencia e inmutabilidad de versiones publicadas.
 - Selección de metodología ACTIVE al iniciar nuevas valoraciones.
 - Excel/CSV: CSV coma/punto y coma/tab, XLSX, agrupación Gold Standard, metodología tabular, rechazo de fórmulas y pruebas de plantillas.
@@ -44,7 +45,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar logout y rechazo de sesión cerrada.
 - Probar expiración/renovación de sesión en staging.
 - Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos.
-- Confirmar visualmente que ADMIN ve Puestos / Comparar / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Puestos / Comparar / Metodologías / Calibración pero no Gold Standard.
+- Confirmar visualmente que ADMIN ve Puestos / Valoraciones / Comparar / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Puestos / Valoraciones / Comparar / Metodologías / Calibración pero no Gold Standard.
 - Confirmar que `/sign-in` y una request sin membership no muestran links de aplicación en la barra superior.
 - Intentar Server Actions manualmente con rol sin permiso y confirmar rechazo backend aunque se manipule HTML.
 - Probar usuario con memberships en dos organizaciones y aislamiento al cambiar organización activa; confirmar además que la navegación se refresca con el rol de la nueva organización.
@@ -68,6 +69,25 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Aprobar y confirmar inmutabilidad final.
 - Revisar historial y legibilidad de traza.
 - Probar layout móvil/desktop.
+
+### Bandeja de Valoraciones
+
+- Abrir `/valuations` como ADMIN, EVALUATOR y REVIEWER y confirmar acceso de solo lectura mediante `VIEW`.
+- Crear varias versiones del mismo puesto y confirmar que cada versión aparece como fila independiente; la bandeja no debe colapsarlas en “última valoración”.
+- Cotejar los contadores DRAFT / IN_REVIEW / RETURNED / APPROVED / SUPERSEDED / CANCELLED contra la DB y confirmar que siguen mostrando el total del tenant aunque se apliquen filtros.
+- Probar individualmente y en combinación búsqueda por nombre/código, estado, área, familia, grado, versión metodológica, iniciador y rango de fechas.
+- Manipular `status`, `methodologyVersionId`, `actorUserId`, `dateFrom` y `dateTo` con valores malformados; confirmar advertencia segura, filtros descartados y ausencia de error SQL/500.
+- Usar rango `dateFrom > dateTo` y confirmar el mismo rechazo seguro.
+- Confirmar que la búsqueda parcial por nombre/código no devuelve filas de otra organización.
+- Cambiar de organización y confirmar aislamiento de filas, contadores, áreas, familias, grados, metodologías y lista de iniciadores.
+- Abrir un histórico creado sin `VALUATION_STARTED` auditado y confirmar `Iniciada por = —`; no debe inferirse actor desde otro evento.
+- Crear una valoración por el flujo web y cotejar que el actor mostrado corresponde al primer `VALUATION_STARTED` de esa valoración.
+- Probar exactamente los bordes UTC del filtro de actualización (00:00:00 y 23:59:59) y confirmar la convención mostrada en UI.
+- Generar más de 200 coincidencias y confirmar total real + aviso `Mostrando primeras 200`, sin página HTML ilimitada.
+- Abrir varias filas y confirmar que cada botón `Abrir` lleva al `valuationId` histórico exacto.
+- Confirmar que la cola no permite cambiar estado, puntaje, grado, metodología ni actor directamente.
+- Revisar filtros y tabla con nombres/metodologías largos en desktop/tablet/móvil y confirmar scroll/legibilidad.
+- Confirmar que la pantalla no consulta ni revela Gold Standard, CALIBRATION o HOLDOUT.
 
 ### Comparables internos
 
