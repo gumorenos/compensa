@@ -130,15 +130,25 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
+  target_run_id uuid;
+  target_organization_id uuid;
   parent_status text;
   parent_partition text;
   parent_methodology uuid;
 BEGIN
+  IF TG_OP = 'DELETE' THEN
+    target_run_id := OLD.run_id;
+    target_organization_id := OLD.organization_id;
+  ELSE
+    target_run_id := NEW.run_id;
+    target_organization_id := NEW.organization_id;
+  END IF;
+
   SELECT status, partition, methodology_version_id
     INTO parent_status, parent_partition, parent_methodology
   FROM calibration_runs
-  WHERE id = COALESCE(NEW.run_id, OLD.run_id)
-    AND organization_id = COALESCE(NEW.organization_id, OLD.organization_id);
+  WHERE id = target_run_id
+    AND organization_id = target_organization_id;
 
   IF parent_status IS NULL THEN
     RAISE EXCEPTION 'Calibration run is unavailable.' USING ERRCODE = '23503';
