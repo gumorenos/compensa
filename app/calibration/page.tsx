@@ -14,8 +14,6 @@ function formatDate(value: Date): string {
 
 export default async function CalibrationPage() {
   const data = await getCalibrationListPageData();
-  const calibrationScopes = data.scopes.filter((scope) => scope.partition === "CALIBRATION");
-  const holdoutScopes = data.scopes.filter((scope) => scope.partition === "HOLDOUT");
 
   return (
     <>
@@ -108,22 +106,19 @@ export default async function CalibrationPage() {
                 <input id="calibration-name" name="name" required placeholder="Ej. Calibración manual agosto 2026" />
               </div>
               <div className="field">
-                <label htmlFor="calibration-methodology">Metodología *</label>
-                <select id="calibration-methodology" name="methodologyVersionId" required>
-                  <option value="">Seleccionar…</option>
-                  {Array.from(new Map(data.scopes.map((scope) => [scope.methodologyVersionId, scope])).values()).map((scope) => (
-                    <option key={scope.methodologyVersionId} value={scope.methodologyVersionId}>
-                      {scope.methodologyName} v{scope.methodologyVersion}
+                <label htmlFor="calibration-scope">Metodología y conjunto *</label>
+                <select id="calibration-scope" name="scope" required defaultValue="">
+                  <option value="" disabled>Seleccionar…</option>
+                  {data.scopes.map((scope) => (
+                    <option
+                      key={`${scope.methodologyVersionId}-${scope.partition}`}
+                      value={`${scope.methodologyVersionId}::${scope.partition}`}
+                    >
+                      {scope.methodologyName} v{scope.methodologyVersion} · {scope.partition} · {scope.caseCount} caso{scope.caseCount === 1 ? "" : "s"}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="field">
-                <label htmlFor="calibration-partition">Partición *</label>
-                <select id="calibration-partition" name="partition" required>
-                  {calibrationScopes.length > 0 && <option value="CALIBRATION">CALIBRATION</option>}
-                  {holdoutScopes.length > 0 && <option value="HOLDOUT">HOLDOUT</option>}
-                </select>
+                <small className="muted">Cada opción corresponde a un conjunto realmente disponible; no se pueden combinar una metodología y una partición sin referencias.</small>
               </div>
               <div className="field">
                 <label htmlFor="calibration-label">Etiqueta del candidato</label>
