@@ -33,6 +33,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Contrato de calibración: `MANAGE_CALIBRATION` solo ADMIN, Server Actions protegidas y feedback HOLDOUT oculto por contrato de UI hasta completar la corrida.
 - Candidatos de calibración Excel/CSV: parser CSV/XLSX, CSV regional, rechazo de fórmulas, plantilla dinámica sin selecciones expertas, dry-run sin escrituras, validación contra metodología congelada, reemplazos en DRAFT, rollback atómico, auditoría transaccional, aislamiento tenant y bloqueo de corrida COMPLETED.
 - Cegamiento HOLDOUT en carga masiva: preview sin puntos/grado/métricas, ausencia de resumen live después del write y contrato UI que no renderiza esas columnas antes del cierre.
+- Cobertura Gold Standard: agregación descriptiva por metodología/versión, estados VALIDATED/DRAFT/ARCHIVED, particiones, grados definidos vs. observados, familias, anclas, descriptivos, evidencia, decisiones obligatorias, justificaciones y aislamiento tenant; sin score ni umbral automático de readiness.
 
 ## Pendiente: E2E real de navegador
 
@@ -99,6 +100,19 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar creación de `GOLD_STANDARD_HISTORICAL_IMPORT` en `security_audit_events`.
 - Si la UI reporta advertencia de auditoría, revisar logs antes de aceptar el entorno.
 - Revisar legibilidad de preview y códigos en móvil/desktop.
+
+### Dashboard de cobertura Gold Standard
+
+- Abrir `/gold-standard/coverage` como ADMIN, EVALUATOR y REVIEWER y confirmar que todos acceden en modo lectura mediante `VIEW`.
+- Con un dataset real de varias metodologías/versiones, cotejar manualmente totales VALIDATED/DRAFT/ARCHIVED y particiones CALIBRATION/HOLDOUT/UNASSIGNED contra `/gold-standard` y la base.
+- Confirmar que referencias DRAFT y ARCHIVED no entran en distribución de grados, anclas, familias ni métricas de evidencia/justificación.
+- Crear una metodología con referencias registradas pero ninguna VALIDATED y confirmar una sola observación `NO_VALIDATED_CASES`, sin ruido grado por grado.
+- Dejar grados definidos sin casos y confirmar que aparecen exactamente como `UNCOVERED_GRADES`.
+- Probar casos sin familia, descriptivo, evidencia o justificación y cotejar sus conteos con los snapshots reales.
+- Confirmar que una metodología/version distinta nunca comparte conteos con otra aunque tenga el mismo código base.
+- Abrir el dashboard con una organización distinta y comprobar visualmente que no aparece ninguna familia, grado, origen o conteo del otro tenant.
+- Revisar legibilidad de tablas con 10+ grados, muchas familias y nombres largos en desktop y móvil.
+- Confirmar que ningún copy presenta los huecos como PASS/FAIL, score de readiness o veredicto automático de suficiencia.
 
 ### Excel / CSV — Gold Standard
 
