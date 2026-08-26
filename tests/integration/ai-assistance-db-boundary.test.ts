@@ -104,7 +104,7 @@ async function createRun() {
     valuation.id,
     actorId,
   );
-  return { organization, run };
+  return { organization, valuation, actorId, run };
 }
 
 describe("AI assistance database provenance boundary", () => {
@@ -167,5 +167,23 @@ describe("AI assistance database provenance boundary", () => {
         [organization.id, suggestion.id],
       ),
     ).rejects.toThrow(/AI suggestion provenance is immutable/);
+  });
+
+  it("keeps the referenced valuation and creator while AI provenance exists", async () => {
+    const { valuation, actorId, run } = await createRun();
+
+    await pool.query(
+      `DELETE FROM security_audit_events
+       WHERE resource_type = 'AI_ASSISTANCE_RUN' AND resource_id = $1`,
+      [run.id],
+    );
+
+    await expect(
+      pool.query(`DELETE FROM auth_users WHERE id = $1`, [actorId]),
+    ).rejects.toThrow(/foreign key constraint/i);
+
+    await expect(
+      pool.query(`DELETE FROM valuations WHERE id = $1`, [valuation.id]),
+    ).rejects.toThrow(/foreign key constraint/i);
   });
 });
