@@ -26,6 +26,47 @@ CREATE INDEX ai_suggestion_resolutions_org_idx
 CREATE INDEX ai_suggestion_resolutions_actor_idx
   ON ai_suggestion_resolutions (resolved_by_user_id, created_at DESC);
 
+-- Keep resolution labels honest even for direct SQL writes. ACCEPTED must preserve
+-- the model suggestion exactly; MODIFIED must actually differ when the model made
+-- a concrete suggestion. A null model suggestion may be MODIFIED into a human level.
+CREATE OR REPLACE FUNCTION ai_suggestion_resolution_validate()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  suggested_level text;
+BEGIN
+  SELECT suggested_level_code
+    INTO suggested_level
+    FROM ai_factor_suggestions
+   WHERE id = NEW.suggestion_id
+     AND organization_id = NEW.organization_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'AI suggestion does not exist in this organization.';
+  END IF;
+
+  IF NEW.resolution = 'ACCEPTED' THEN
+    IF suggested_level IS NULL THEN
+      RAISE EXCEPTION 'An abstaining AI suggestion cannot be accepted.';
+    END IF;
+    IF NEW.resolved_level_code IS DISTINCT FROM suggested_level THEN
+      RAISE EXCEPTION 'Accepted AI resolution must use the suggested level.';
+    END IF;
+  ELSIF NEW.resolution = 'MODIFIED' THEN
+    IF suggested_level IS NOT NULL AND NEW.resolved_level_code = suggested_level THEN
+      RAISE EXCEPTION 'Modified AI resolution must differ from the suggested level.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER ai_suggestion_resolutions_validate
+BEFORE INSERT ON ai_suggestion_resolutions
+FOR EACH ROW EXECUTE FUNCTION ai_suggestion_resolution_validate();
+
 CREATE OR REPLACE FUNCTION ai_suggestion_resolution_immutable()
 RETURNS trigger
 LANGUAGE plpgsql
