@@ -83,3 +83,114 @@ CREATE TABLE ai_clarification_questions (
 
 CREATE INDEX ai_clarification_questions_run_idx
   ON ai_clarification_questions (organization_id, run_id, status, id);
+
+-- AI provenance is reference data. Human resolution is stored separately and must never
+-- rewrite the model output used to explain or calibrate a recommendation.
+CREATE OR REPLACE FUNCTION ai_assistance_protect_run()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'AI assistance runs are immutable.';
+  END IF;
+  RAISE EXCEPTION 'AI assistance runs are immutable.';
+END;
+$$;
+
+CREATE TRIGGER ai_assistance_runs_immutable
+BEFORE UPDATE OR DELETE ON ai_assistance_runs
+FOR EACH ROW EXECUTE FUNCTION ai_assistance_protect_run();
+
+CREATE OR REPLACE FUNCTION ai_assistance_protect_suggestion()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'AI suggestion provenance is immutable.';
+  END IF;
+
+  IF ROW(
+    NEW.id,
+    NEW.organization_id,
+    NEW.run_id,
+    NEW.dimension_code,
+    NEW.suggested_level_code,
+    NEW.confidence,
+    NEW.rationale,
+    NEW.created_at
+  ) IS DISTINCT FROM ROW(
+    OLD.id,
+    OLD.organization_id,
+    OLD.run_id,
+    OLD.dimension_code,
+    OLD.suggested_level_code,
+    OLD.confidence,
+    OLD.rationale,
+    OLD.created_at
+  ) THEN
+    RAISE EXCEPTION 'AI suggestion provenance is immutable.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER ai_factor_suggestions_provenance_immutable
+BEFORE UPDATE OR DELETE ON ai_factor_suggestions
+FOR EACH ROW EXECUTE FUNCTION ai_assistance_protect_suggestion();
+
+CREATE OR REPLACE FUNCTION ai_assistance_protect_evidence()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'AI suggestion evidence is immutable.';
+END;
+$$;
+
+CREATE TRIGGER ai_suggestion_evidence_immutable
+BEFORE UPDATE OR DELETE ON ai_suggestion_evidence
+FOR EACH ROW EXECUTE FUNCTION ai_assistance_protect_evidence();
+
+CREATE OR REPLACE FUNCTION ai_assistance_protect_clarification()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'AI clarification provenance is immutable.';
+  END IF;
+
+  IF ROW(
+    NEW.id,
+    NEW.organization_id,
+    NEW.run_id,
+    NEW.dimension_code,
+    NEW.question_text,
+    NEW.reason,
+    NEW.created_at
+  ) IS DISTINCT FROM ROW(
+    OLD.id,
+    OLD.organization_id,
+    OLD.run_id,
+    OLD.dimension_code,
+    OLD.question_text,
+    OLD.reason,
+    OLD.created_at
+  ) THEN
+    RAISE EXCEPTION 'AI clarification provenance is immutable.';
+  END IF;
+
+  IF OLD.status <> 'OPEN' AND NEW.status IS DISTINCT FROM OLD.status THEN
+    RAISE EXCEPTION 'Resolved AI clarification status is immutable.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER ai_clarification_questions_provenance_immutable
+BEFORE UPDATE OR DELETE ON ai_clarification_questions
+FOR EACH ROW EXECUTE FUNCTION ai_assistance_protect_clarification();
