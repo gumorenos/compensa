@@ -70,7 +70,7 @@ There is no HTTP route or Server Action for generation in this increment. When a
 
 ## Privacy and provider binding
 
-No provider SDK, API key, model environment variable or prompt containing customer data is introduced here. Before enabling a real provider, the next increment must make an explicit decision on:
+No provider SDK, API key, model environment variable or prompt containing customer data is introduced here. Before enabling a real provider, a later provider-binding increment must make an explicit decision on:
 
 - provider and model;
 - data retention and training policy;
@@ -86,4 +86,6 @@ The current schema stores provider/model identifiers and an input fingerprint, b
 
 ## Next increment
 
-The next safe step is provider configuration plus a read-only suggestion panel behind `EVALUATE`, using a deterministic/mock provider in tests. Acceptance/modification should remain an explicit human action that writes the valuation decision separately and triggers the existing deterministic scoring flow.
+Before binding a real provider, the next safe step is the **human resolution lifecycle** for persisted suggestions: accept, modify or reject. Acceptance/modification must be an explicit `EVALUATE` action that writes the human `valuation_decision` with source `AI_ACCEPTED` or `AI_MODIFIED`, then invokes the existing deterministic scoring path. Rejection must leave the valuation decision and score unchanged.
+
+The original AI suggestion, rationale, confidence and evidence must remain immutable and separate from the human resolution so Compensa can later measure acceptance, modification and rejection rates without rewriting history. Provider configuration and a read-only/generation UI can then be added on top of that audited boundary.
