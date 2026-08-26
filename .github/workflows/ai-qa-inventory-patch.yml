@@ -1,0 +1,38 @@
+name: AI QA inventory patch
+on:
+  push:
+    branches: [feat/ai-assistance-foundation]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/ai-assistance-foundation
+      - name: Patch canonical QA inventory and remove this workflow
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('docs/QA_PENDING.md')
+          text = path.read_text()
+          covered_anchor = '- Cobertura Gold Standard: agregación por metodología/versión, VALIDATED/DRAFT/ARCHIVED, particiones, grados, familias, anclas, descriptivos, evidencia, decisiones obligatorias, justificaciones y aislamiento tenant, sin readiness score.\n'
+          covered = covered_anchor + '- Fundación de asistencia IA: contrato provider-neutral sin scoring/grados, validación estricta de campos/dimensiones/niveles/confianza, evidencia anclada al descriptivo fijado, aislamiento tenant, fingerprint de inputs, descarte de resultados obsoletos y persistencia atómica de run/sugerencias/evidencia/preguntas/auditoría sin modificar decisiones, puntos, grado o workflow.\n'
+          if covered_anchor not in text:
+              raise SystemExit('covered anchor missing')
+          text = text.replace(covered_anchor, covered, 1)
+          pending_anchor = '## Pendiente: E2E real de navegador\n'
+          pending = '''## Pendiente antes de conectar un proveedor IA real\n\n- Elegir proveedor/modelo tras revisar política de retención, entrenamiento, privacidad, residencia regional y tratamiento de datos empresariales.\n- Añadir configuración explícita por organización para habilitar/deshabilitar IA; el modo manual debe seguir funcionando completamente.\n- Definir secrets management para API keys sin almacenarlas en DB, repositorio, logs ni payloads de auditoría.\n- Definir prompt versionado y trazabilidad de versión exacta de modelo/proveedor para reproducibilidad.\n- Implementar límites de costo/cuota, rate limiting, timeout, retry/backoff e idempotencia para invocaciones reales.\n- Revisar logging/redacción para impedir que descriptivos, evidencia o respuestas completas terminen en logs operativos.\n- Probar prompt injection y contenido adversarial dentro de descriptivos; las instrucciones del documento no deben alterar el contrato del sistema.\n- Confirmar por contrato y E2E que Gold Standard, HOLDOUT y respuestas expertas nunca se envían al proveedor durante valoración normal.\n- Validar que errores/timeouts del proveedor no escriben decisiones ni resultados parciales y dejan el flujo manual disponible.\n- Definir UX de consentimiento/aviso cuando el contenido del puesto vaya a salir de la infraestructura del cliente.\n- Ejecutar revisión de seguridad y privacidad específica del proveedor antes de habilitar tráfico real.\n\n'''
+          if pending_anchor not in text:
+              raise SystemExit('pending anchor missing')
+          text = text.replace(pending_anchor, pending + pending_anchor, 1)
+          path.write_text(text)
+          Path('.github/workflows/ai-qa-inventory-patch.yml').unlink()
+      - name: Commit QA inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/QA_PENDING.md .github/workflows/ai-qa-inventory-patch.yml
+          git commit -m "Document pending AI provider QA"
+          git push origin HEAD:feat/ai-assistance-foundation
