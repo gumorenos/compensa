@@ -1,6 +1,6 @@
 # Compensa — QA pendiente
 
-Actualizado: 2026-08-24
+Actualizado: 2026-08-25
 
 Este archivo es el inventario único de validaciones conocidas que **todavía no cubre el CI automatizado**. Deben ejecutarse antes de considerar Compensa listo para usuarios externos/producción. Si una prueba pasa posteriormente, debe moverse fuera de las secciones pendientes en el mismo cambio que la automatiza o documenta.
 
@@ -37,6 +37,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - HOLDOUT en carga masiva: preview sin puntos/grado/métricas y ausencia de resumen live después del write.
 - Cobertura Gold Standard: agregación por metodología/versión, VALIDATED/DRAFT/ARCHIVED, particiones, grados, familias, anclas, descriptivos, evidencia, decisiones obligatorias, justificaciones y aislamiento tenant, sin readiness score.
 - Fundación de asistencia IA: contrato provider-neutral sin scoring/grados, validación estricta de campos/dimensiones/niveles/confianza, evidencia anclada al descriptivo fijado, aislamiento tenant, fingerprint de inputs, descarte de resultados obsoletos y persistencia atómica de run/sugerencias/evidencia/preguntas/auditoría sin modificar decisiones, puntos, grado o workflow.
+- Resolución humana de sugerencias IA: contrato estricto ACCEPTED/MODIFIED/REJECTED, UUID adversarial seguro, aislamiento tenant, bloqueo por estado/staleness, reutilización atómica del motor determinístico, abstención, concurrencia, actor/auditoría, rollback, semántica e inmutabilidad PostgreSQL sin sobrescribir la sugerencia original.
 
 ## Pendiente antes de conectar un proveedor IA real
 
@@ -51,6 +52,11 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Validar que errores/timeouts del proveedor no escriben decisiones ni resultados parciales y dejan el flujo manual disponible.
 - Definir UX de consentimiento/aviso cuando el contenido del puesto vaya a salir de la infraestructura del cliente.
 - Ejecutar revisión de seguridad y privacidad específica del proveedor antes de habilitar tráfico real.
+- Antes del primer proveedor externo, recorrer el flujo completo con provider fixture/local determinístico: generar → revisar → aceptar/modificar/rechazar → recalcular cuando corresponda.
+- En esa UI futura, confirmar que ADMIN/EVALUATOR pueden generar y resolver mediante `EVALUATE`, REVIEWER recibe `FORBIDDEN` y manipular HTML/Server Action no evita el permiso.
+- Probar sugerencia con abstención: no debe poder aceptarse; modificar exige nivel humano explícito y rechazar no debe tocar decisión/puntos/grado.
+- Abrir la misma sugerencia en dos pestañas/usuarios y confirmar una única resolución visible, error seguro al segundo intento y actor correcto en historial/auditoría.
+- Cambiar de tenant durante el flujo IA y confirmar que run, sugerencias, resolución, descriptivo y valoración del tenant anterior no se muestran ni pueden mutarse.
 
 ## Pendiente: E2E real de navegador
 
