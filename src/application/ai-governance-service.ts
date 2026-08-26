@@ -109,10 +109,13 @@ export class AIGovernanceService {
       );
       const saved = mapSettings(result.rows[0] as SettingsRow);
 
+      // Keep organization_id and resource_id as separate parameters even though
+      // they carry the same value: the former is UUID while audit resource_id is text.
+      // This avoids PostgreSQL inferring conflicting types for one placeholder.
       await client.query(
         `INSERT INTO security_audit_events
           (organization_id, actor_user_id, action, resource_type, resource_id, payload)
-         VALUES ($1, $2, 'AI_ASSISTANCE_SETTINGS_UPDATED', 'ORGANIZATION', $1,
+         VALUES ($1, $2, 'AI_ASSISTANCE_SETTINGS_UPDATED', 'ORGANIZATION', $5,
            jsonb_build_object(
              'assistanceEnabled', $3::boolean,
              'externalProcessingAllowed', $4::boolean
@@ -122,6 +125,7 @@ export class AIGovernanceService {
           actorUserId,
           saved.assistanceEnabled,
           saved.externalProcessingAllowed,
+          organizationId,
         ],
       );
 
