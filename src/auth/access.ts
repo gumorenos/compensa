@@ -13,7 +13,8 @@ export type Permission =
   | "MANAGE_MEMBERS"
   | "MANAGE_GOLD_STANDARD"
   | "MANAGE_METHODOLOGIES"
-  | "MANAGE_CALIBRATION";
+  | "MANAGE_CALIBRATION"
+  | "MANAGE_AI_ASSISTANCE";
 
 export interface AccessContext {
   user: {
@@ -59,6 +60,7 @@ const rolePermissions: Record<OrganizationRole, ReadonlySet<Permission>> = {
     "MANAGE_GOLD_STANDARD",
     "MANAGE_METHODOLOGIES",
     "MANAGE_CALIBRATION",
+    "MANAGE_AI_ASSISTANCE",
   ]),
   EVALUATOR: new Set(["VIEW", "MANAGE_JOBS", "EVALUATE", "SUBMIT_REVIEW"]),
   REVIEWER: new Set(["VIEW", "REVIEW"]),
