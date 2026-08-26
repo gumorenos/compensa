@@ -22,7 +22,17 @@ AI output is persisted in dedicated tables:
 - `ai_suggestion_evidence`;
 - `ai_clarification_questions`.
 
-These records never overwrite `valuation_decisions`. A later human action may use the existing decision sources `AI_ACCEPTED` or `AI_MODIFIED`, while the original suggestion remains available for audit and calibration of the assistant itself.
+These records never overwrite `valuation_decisions`.
+
+Human resolution is persisted separately in `ai_suggestion_resolutions`. Each suggestion may be resolved exactly once as `ACCEPTED`, `MODIFIED` or `REJECTED`, and that resolution record is immutable. The original suggestion, rationale, confidence and evidence remain unchanged.
+
+- `ACCEPTED` uses the exact level persisted in the AI suggestion and writes the human valuation decision with source `AI_ACCEPTED`.
+- `MODIFIED` requires an explicit human level and writes the valuation decision with source `AI_MODIFIED`. If the model made a concrete suggestion, the modified level must actually differ. A model abstention (`null`) may be modified into an explicit human level.
+- `REJECTED` writes no valuation decision and does not change points or grade.
+
+Acceptance/modification reuse the existing deterministic `ValuationService` and scoring engine. The resolution row, valuation decision/recalculation, valuation event and security audit event commit atomically. A caller-supplied human justification is allowed for acceptance/modification, but Compensa never copies the AI rationale into a human justification automatically.
+
+The database also enforces the provenance semantics for direct SQL writes: an accepted resolution cannot name a level different from the original suggestion, a concrete suggestion cannot be labeled modified without changing level, and resolution rows cannot be updated or deleted.
 
 ## Provider contract
 
@@ -64,9 +74,13 @@ If any of these conditions change while analysis is running, the provider result
 
 Generation itself never calls the scoring engine, writes `valuation_decisions`, changes `total_points`, changes `grade_code` or changes valuation status.
 
+Human resolution uses the same `valuation-edit:<valuationId>` advisory-lock order as ordinary manual decision editing. Competing manual edits and AI resolutions for one valuation are serialized, and exactly one immutable resolution can exist for a suggestion. Resolution is allowed only while the valuation is `DRAFT` or `RETURNED` and only while the valuation still references the methodology and job-description versions used by the AI run.
+
 ## Access boundary
 
-There is no HTTP route or Server Action for generation in this increment. When a UI/provider binding is added, invocation must require the existing `EVALUATE` permission: ADMIN and EVALUATOR may request assistance; REVIEWER remains read-only and cannot initiate it.
+There is still no HTTP route or Server Action for AI generation or resolution in this increment. When a UI/provider binding is added, both generation and human resolution must require the existing `EVALUATE` permission: ADMIN and EVALUATOR may request/resolve assistance; REVIEWER remains read-only and cannot initiate or resolve it.
+
+The application service receives the authenticated human actor ID so the eventual `AI_SUGGESTION_RESOLVED` valuation/security audit records can attribute the decision without placing rationale, evidence, notes or justification text in the security audit payload.
 
 ## Privacy and provider binding
 
@@ -86,6 +100,6 @@ The current schema stores provider/model identifiers and an input fingerprint, b
 
 ## Next increment
 
-Before binding a real provider, the next safe step is the **human resolution lifecycle** for persisted suggestions: accept, modify or reject. Acceptance/modification must be an explicit `EVALUATE` action that writes the human `valuation_decision` with source `AI_ACCEPTED` or `AI_MODIFIED`, then invokes the existing deterministic scoring path. Rejection must leave the valuation decision and score unchanged.
+The provider-neutral generation boundary and the audited human resolution lifecycle are now defined without exposing a provider or UI. The next safe increment should bind the **application-facing assistance workflow** without weakening those boundaries: organization-level opt-in/configuration, an `EVALUATE`-protected read/generate/resolve surface, and a provider adapter behind the existing interface.
 
-The original AI suggestion, rationale, confidence and evidence must remain immutable and separate from the human resolution so Compensa can later measure acceptance, modification and rejection rates without rewriting history. Provider configuration and a read-only/generation UI can then be added on top of that audited boundary.
+Provider selection must not be treated as a simple SDK wiring task. Before real customer text leaves Compensa, the privacy/retention, secrets, logging/redaction, quotas, timeout/retry and consent items in `docs/QA_PENDING.md` must be decided. A deterministic fake/fixture provider may be used first to exercise the complete UI and human-resolution flow without external data transfer.
