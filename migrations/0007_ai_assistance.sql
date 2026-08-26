@@ -9,14 +9,14 @@ CREATE TABLE ai_assistance_runs (
   prompt_version text NOT NULL CHECK (btrim(prompt_version) <> ''),
   input_fingerprint text NOT NULL CHECK (btrim(input_fingerprint) <> ''),
   status text NOT NULL CHECK (status IN ('COMPLETED', 'FAILED')),
-  created_by_user_id uuid REFERENCES auth_users(id) ON DELETE SET NULL,
+  created_by_user_id uuid REFERENCES auth_users(id) ON DELETE RESTRICT,
   error_code text,
   error_message text,
   created_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz,
   UNIQUE (id, organization_id),
   FOREIGN KEY (valuation_id, organization_id)
-    REFERENCES valuations(id, organization_id) ON DELETE CASCADE,
+    REFERENCES valuations(id, organization_id) ON DELETE RESTRICT,
   FOREIGN KEY (job_description_version_id, organization_id)
     REFERENCES job_description_versions(id, organization_id) ON DELETE RESTRICT,
   CHECK (
