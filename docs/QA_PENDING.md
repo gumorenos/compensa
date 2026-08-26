@@ -36,6 +36,21 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Candidatos de calibración Excel/CSV: plantilla dinámica sin referencias expertas, parser, dry-run, reemplazos DRAFT, rollback atómico, auditoría transaccional, aislamiento y bloqueo tras COMPLETED.
 - HOLDOUT en carga masiva: preview sin puntos/grado/métricas y ausencia de resumen live después del write.
 - Cobertura Gold Standard: agregación por metodología/versión, VALIDATED/DRAFT/ARCHIVED, particiones, grados, familias, anclas, descriptivos, evidencia, decisiones obligatorias, justificaciones y aislamiento tenant, sin readiness score.
+- Fundación de asistencia IA: contrato provider-neutral sin scoring/grados, validación estricta de campos/dimensiones/niveles/confianza, evidencia anclada al descriptivo fijado, aislamiento tenant, fingerprint de inputs, descarte de resultados obsoletos y persistencia atómica de run/sugerencias/evidencia/preguntas/auditoría sin modificar decisiones, puntos, grado o workflow.
+
+## Pendiente antes de conectar un proveedor IA real
+
+- Elegir proveedor/modelo tras revisar política de retención, entrenamiento, privacidad, residencia regional y tratamiento de datos empresariales.
+- Añadir configuración explícita por organización para habilitar/deshabilitar IA; el modo manual debe seguir funcionando completamente.
+- Definir secrets management para API keys sin almacenarlas en DB, repositorio, logs ni payloads de auditoría.
+- Definir prompt versionado y trazabilidad de versión exacta de modelo/proveedor para reproducibilidad.
+- Implementar límites de costo/cuota, rate limiting, timeout, retry/backoff e idempotencia para invocaciones reales.
+- Revisar logging/redacción para impedir que descriptivos, evidencia o respuestas completas terminen en logs operativos.
+- Probar prompt injection y contenido adversarial dentro de descriptivos; las instrucciones del documento no deben alterar el contrato del sistema.
+- Confirmar por contrato y E2E que Gold Standard, HOLDOUT y respuestas expertas nunca se envían al proveedor durante valoración normal.
+- Validar que errores/timeouts del proveedor no escriben decisiones ni resultados parciales y dejan el flujo manual disponible.
+- Definir UX de consentimiento/aviso cuando el contenido del puesto vaya a salir de la infraestructura del cliente.
+- Ejecutar revisión de seguridad y privacidad específica del proveedor antes de habilitar tráfico real.
 
 ## Pendiente: E2E real de navegador
 
