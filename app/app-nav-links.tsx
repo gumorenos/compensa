@@ -25,6 +25,9 @@ export async function AppNavLinks() {
         <Link href="/gold-standard">Gold Standard</Link>
       )}
       <Link href="/calibration">Calibración</Link>
+      {roleHasPermission(access.role, "MANAGE_AI_ASSISTANCE") && (
+        <Link href="/ai-assistance">IA</Link>
+      )}
     </>
   );
 }

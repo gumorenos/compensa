@@ -38,11 +38,11 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Cobertura Gold Standard: agregación por metodología/versión, VALIDATED/DRAFT/ARCHIVED, particiones, grados, familias, anclas, descriptivos, evidencia, decisiones obligatorias, justificaciones y aislamiento tenant, sin readiness score.
 - Fundación de asistencia IA: contrato provider-neutral sin scoring/grados, validación estricta de campos/dimensiones/niveles/confianza, evidencia anclada al descriptivo fijado, aislamiento tenant, fingerprint de inputs, descarte de resultados obsoletos y persistencia atómica de run/sugerencias/evidencia/preguntas/auditoría sin modificar decisiones, puntos, grado o workflow.
 - Resolución humana de sugerencias IA: contrato estricto ACCEPTED/MODIFIED/REJECTED, UUID adversarial seguro, aislamiento tenant, bloqueo por estado/staleness, reutilización atómica del motor determinístico, abstención, concurrencia, actor/auditoría, rollback, semántica e inmutabilidad PostgreSQL sin sobrescribir la sugerencia original.
+- Gobernanza IA por tenant: default-off sin fila, opt-in independiente de procesamiento externo, revocación consistente, permiso ADMIN dedicado `MANAGE_AI_ASSISTANCE`, aislamiento PostgreSQL, constraint de consentimiento y actualización+auditoría atómicas sin invocar proveedor, scoring ni rutas Gold Standard/HOLDOUT/calibración.
 
 ## Pendiente antes de conectar un proveedor IA real
 
 - Elegir proveedor/modelo tras revisar política de retención, entrenamiento, privacidad, residencia regional y tratamiento de datos empresariales.
-- Añadir configuración explícita por organización para habilitar/deshabilitar IA; el modo manual debe seguir funcionando completamente.
 - Definir secrets management para API keys sin almacenarlas en DB, repositorio, logs ni payloads de auditoría.
 - Definir prompt versionado y trazabilidad de versión exacta de modelo/proveedor para reproducibilidad.
 - Implementar límites de costo/cuota, rate limiting, timeout, retry/backoff e idempotencia para invocaciones reales.
@@ -67,7 +67,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Confirmar logout y rechazo de sesión cerrada.
 - Probar expiración/renovación de sesión en staging.
 - Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos.
-- Confirmar visualmente que ADMIN ve Inicio / Puestos / Valoraciones / Comparar / Metodologías / Gold Standard / Calibración; EVALUATOR y REVIEWER ven Inicio / Puestos / Valoraciones / Comparar / Metodologías / Calibración pero no Gold Standard.
+- Confirmar visualmente que ADMIN ve Inicio / Puestos / Valoraciones / Comparar / Metodologías / Gold Standard / Calibración / IA; EVALUATOR y REVIEWER ven Inicio / Puestos / Valoraciones / Comparar / Metodologías / Calibración pero no Gold Standard ni IA.
 - Confirmar que `/sign-in` y una request sin membership no muestran links de aplicación en la barra superior.
 - Intentar Server Actions manualmente con rol sin permiso y confirmar rechazo backend aunque se manipule HTML.
 - Probar usuario con memberships en dos organizaciones y aislamiento al cambiar organización activa; confirmar además que la navegación se refresca con el rol de la nueva organización.
@@ -75,6 +75,20 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Desactivar membership y organización y confirmar pérdida inmediata de acceso y desaparición de links de aplicación.
 - Confirmar actor correcto en historial de envío, devolución y aprobación.
 - Confirmar que EVALUATOR y REVIEWER reciben `FORBIDDEN` al abrir `/gold-standard`, `/gold-standard/<caseId>` y `/gold-standard/coverage`, sin puntos, grados, decisiones ni metadatos del dataset experto en la respuesta, incluso si escriben la URL manualmente.
+
+### Gobernanza de asistencia IA
+
+- Abrir `/ai-assistance` como ADMIN y confirmar que la ausencia de configuración previa se muestra como asistencia y procesamiento externo deshabilitados.
+- Abrir `/ai-assistance` como EVALUATOR y REVIEWER escribiendo la URL directamente y confirmar `FORBIDDEN`; no basta con ocultar el link.
+- Habilitar solo asistencia IA y confirmar persistencia tras refresh sin habilitar procesamiento externo.
+- Habilitar procesamiento externo con asistencia habilitada y confirmar ambos flags en el tenant correcto.
+- Deshabilitar asistencia después de haber autorizado procesamiento externo y confirmar que ambos flags quedan en `false`.
+- Cambiar de organización activa y confirmar que los flags de un tenant no aparecen ni afectan al otro.
+- Confirmar que `AI_ASSISTANCE_SETTINGS_UPDATED` registra organización y actor correctos para habilitación, consentimiento y revocación.
+- Manipular el formulario para intentar `externalProcessingAllowed=true` con asistencia deshabilitada y confirmar que no queda un estado contradictorio.
+- Inspeccionar red/logs al alternar la configuración y confirmar que no existe llamada a proveedor/modelo, no se envían descriptivos/evidencia y no se requieren API keys.
+- Confirmar que el modo manual de Puestos/Valoraciones funciona igual con asistencia deshabilitada.
+- Revisar `/ai-assistance` en desktop/móvil y verificar legibilidad del aviso de procesamiento externo y de los controles.
 
 ### Inicio operativo
 

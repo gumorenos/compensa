@@ -1,6 +1,6 @@
 # AI assistance foundation
 
-Stage 3 starts with a provider-neutral assistance boundary. This increment does **not** connect Compensa to an external model and does not expose an AI button in the UI yet.
+Stage 3 starts with a provider-neutral assistance boundary. Compensa does **not** connect to an external model in this stage merely because AI assistance is enabled for an organization.
 
 ## Product boundary
 
@@ -34,6 +34,24 @@ Acceptance/modification reuse the existing deterministic `ValuationService` and 
 
 The database also enforces the provenance semantics for direct SQL writes: an accepted resolution cannot name a level different from the original suggestion, a concrete suggestion cannot be labeled modified without changing level, and resolution rows cannot be updated or deleted.
 
+## Tenant governance and opt-in
+
+AI assistance is **off by default per organization**. The absence of an `ai_assistance_settings` row is interpreted as:
+
+- `assistance_enabled = false`;
+- `external_processing_allowed = false`.
+
+Only a user with `MANAGE_AI_ASSISTANCE` may change these settings; the current role matrix grants that permission only to ADMIN.
+
+The two controls have deliberately different meanings:
+
+- `assistance_enabled` allows Compensa to expose assisted workflows for that tenant once an application-facing workflow exists;
+- `external_processing_allowed` records that the tenant permits job content to leave Compensa for an external processor **after** a reviewed provider binding exists.
+
+External processing cannot be allowed while assistance itself is disabled. Disabling assistance revokes external-processing consent as part of the same settings update. Every settings change is tenant-scoped, attributed to the authenticated actor and recorded in `security_audit_events`.
+
+Neither flag selects a model, stores an API key, invokes a provider or sends customer data anywhere. The current `/ai-assistance` surface is governance-only.
+
 ## Provider contract
 
 `AIAssistanceProvider` is injected into `AIAssistanceService`. The provider receives only:
@@ -63,7 +81,7 @@ For Stage 3 foundation, AI evidence is restricted to the pinned job description.
 
 ## Transaction and race safety
 
-The external/provider call is deliberately made outside the PostgreSQL transaction. Before persistence, Compensa locks the valuation row and revalidates that:
+The provider call is deliberately made outside the PostgreSQL transaction. Before persistence, Compensa locks the valuation row and revalidates that:
 
 - the valuation still belongs to the same organization;
 - it remains `DRAFT` or `RETURNED`;
@@ -78,13 +96,15 @@ Human resolution uses the same `valuation-edit:<valuationId>` advisory-lock orde
 
 ## Access boundary
 
-There is still no HTTP route or Server Action for AI generation or resolution in this increment. When a UI/provider binding is added, both generation and human resolution must require the existing `EVALUATE` permission: ADMIN and EVALUATOR may request/resolve assistance; REVIEWER remains read-only and cannot initiate or resolve it.
+Tenant governance requires `MANAGE_AI_ASSISTANCE` and is ADMIN-only in the current role matrix.
 
-The application service receives the authenticated human actor ID so the eventual `AI_SUGGESTION_RESOLVED` valuation/security audit records can attribute the decision without placing rationale, evidence, notes or justification text in the security audit payload.
+When the application-facing generation/resolution UI is added, requesting and resolving assistance must continue to require `EVALUATE`: ADMIN and EVALUATOR may use assisted evaluation when the tenant has enabled it; REVIEWER remains read-only and cannot initiate or resolve suggestions. Enabling assistance at tenant level never expands an individual user's role permissions.
+
+The application service receives the authenticated human actor ID so `AI_SUGGESTION_RESOLVED` valuation/security audit records can attribute the decision without placing rationale, evidence, notes or justification text in the security audit payload.
 
 ## Privacy and provider binding
 
-No provider SDK, API key, model environment variable or prompt containing customer data is introduced here. Before enabling a real provider, a later provider-binding increment must make an explicit decision on:
+No provider SDK, API key, model environment variable or prompt containing customer data is introduced by tenant governance. Before enabling a real provider, a later provider-binding increment must make an explicit decision on:
 
 - provider and model;
 - data retention and training policy;
@@ -96,10 +116,20 @@ No provider SDK, API key, model environment variable or prompt containing custom
 - prompt versioning and model-version traceability;
 - whether customer configuration permits sending job descriptions externally.
 
-The current schema stores provider/model identifiers and an input fingerprint, but the security audit payload intentionally excludes raw job-description text and evidence excerpts.
+A real external invocation must require all of the following independently:
+
+1. tenant assistance enabled;
+2. tenant external processing allowed;
+3. an approved/configured provider binding;
+4. an authenticated user with the operational permission required for the action;
+5. the existing provider payload and evidence validation boundaries.
+
+The current schema stores provider/model identifiers on assistance runs and an input fingerprint, but the security audit payload intentionally excludes raw job-description text and evidence excerpts.
 
 ## Next increment
 
-The provider-neutral generation boundary and the audited human resolution lifecycle are now defined without exposing a provider or UI. The next safe increment should bind the **application-facing assistance workflow** without weakening those boundaries: organization-level opt-in/configuration, an `EVALUATE`-protected read/generate/resolve surface, and a provider adapter behind the existing interface.
+The provider-neutral generation boundary, audited human resolution lifecycle and tenant governance gate are now defined without sending data to an external provider.
 
-Provider selection must not be treated as a simple SDK wiring task. Before real customer text leaves Compensa, the privacy/retention, secrets, logging/redaction, quotas, timeout/retry and consent items in `docs/QA_PENDING.md` must be decided. A deterministic fake/fixture provider may be used first to exercise the complete UI and human-resolution flow without external data transfer.
+The next safe increment is the **application-facing assistance workflow** behind `assistance_enabled`: allow an `EVALUATE` user to request assistance for an editable valuation, review persisted suggestions/evidence/questions, and accept/modify/reject them through the existing resolution service. The first end-to-end UI should use a deterministic fixture/local adapter so permissions, tenant switching, staleness, concurrency and human resolution can be exercised without external data transfer.
+
+Only after that workflow is stable should a real provider adapter be bound, and only after the privacy/retention, secrets, logging/redaction, quotas, timeout/retry and consent items in `docs/QA_PENDING.md` are resolved.

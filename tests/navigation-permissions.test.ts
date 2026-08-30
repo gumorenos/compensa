@@ -12,6 +12,7 @@ describe("role-aware application navigation", () => {
     expect(layout).toContain("<AppNavLinks />");
     expect(layout).not.toContain('href="/gold-standard"');
     expect(layout).not.toContain('href="/calibration"');
+    expect(layout).not.toContain('href="/ai-assistance"');
   });
 
   it("uses the active request membership and hides all app links when access context is unavailable", async () => {
@@ -27,6 +28,15 @@ describe("role-aware application navigation", () => {
     expect(roleHasPermission("ADMIN", "MANAGE_GOLD_STANDARD")).toBe(true);
     expect(roleHasPermission("EVALUATOR", "MANAGE_GOLD_STANDARD")).toBe(false);
     expect(roleHasPermission("REVIEWER", "MANAGE_GOLD_STANDARD")).toBe(false);
+  });
+
+  it("renders AI governance only for ADMIN", async () => {
+    const navigation = await source("app/app-nav-links.tsx");
+    expect(navigation).toContain('roleHasPermission(access.role, "MANAGE_AI_ASSISTANCE")');
+    expect(navigation).toContain('href="/ai-assistance"');
+    expect(roleHasPermission("ADMIN", "MANAGE_AI_ASSISTANCE")).toBe(true);
+    expect(roleHasPermission("EVALUATOR", "MANAGE_AI_ASSISTANCE")).toBe(false);
+    expect(roleHasPermission("REVIEWER", "MANAGE_AI_ASSISTANCE")).toBe(false);
   });
 
   it("keeps normal member destinations in the authenticated navigation", async () => {
