@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "feat/**", "test/**"]
+    branches: [main, "feat/**"]
   pull_request:
     branches: [main]
 
@@ -93,6 +93,7 @@ jobs:
         env:
           BETTER_AUTH_URL: http://127.0.0.1:3210
           COMPENSA_AI_FIXTURE_ENABLED: "true"
+          COMPENSA_E2E_ALLOW_DESTRUCTIVE_SEED: "true"
           COMPENSA_E2E_FIXTURE_PATH: /tmp/compensa-ai-e2e-fixture.json
           COMPENSA_E2E_BASE_URL: http://127.0.0.1:3210
           COMPENSA_E2E_CDP_URL: http://127.0.0.1:9222
