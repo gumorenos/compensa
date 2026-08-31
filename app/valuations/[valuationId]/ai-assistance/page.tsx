@@ -20,6 +20,7 @@ export default async function ValuationAIAssistancePage({
   const editableStatus = data.valuationStatus === "DRAFT" || data.valuationStatus === "RETURNED";
   const canGenerate =
     editableStatus &&
+    data.hasPinnedDescription &&
     data.canEvaluate &&
     data.workflow.settings.assistanceEnabled &&
     data.workflow.provider.available;
@@ -64,6 +65,17 @@ export default async function ValuationAIAssistancePage({
           <strong>No hay un proveedor de asistencia configurado en este entorno.</strong>
           <span>
             Las corridas históricas siguen siendo consultables, pero no se puede generar una nueva.
+          </span>
+        </div>
+      )}
+
+      {!data.hasPinnedDescription && (
+        <div className="notice">
+          <strong>Esta valoración no tiene un descriptivo anclado.</strong>
+          <span>
+            El flujo manual sigue disponible, pero la asistencia requiere una versión de
+            descriptivo fijada a la valoración. Las corridas históricas, si existieran, permanecen
+            en solo lectura.
           </span>
         </div>
       )}
