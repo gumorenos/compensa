@@ -48,7 +48,13 @@ export async function resolveAIAssistanceSuggestionAction(formData: FormData): P
     context.pool,
     getAIAssistanceProviderBinding(),
   );
-  await workflow.resolve(context.organization.id, suggestionId, context.access.user.id, input);
+  await workflow.resolve(
+    context.organization.id,
+    valuationId,
+    suggestionId,
+    context.access.user.id,
+    input,
+  );
   revalidateValuationPaths(valuationId);
 }
 
