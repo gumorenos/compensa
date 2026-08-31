@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { createCompensaAuth } from "../src/auth/server.js";
 import { ValuationService } from "../src/application/valuation-service.js";
@@ -40,6 +41,10 @@ function assertDestructiveSeedSafety(databaseUrl: string): void {
   }
 }
 
+function ephemeralPassword(label: string): string {
+  return `Compensa-E2E-${label}-${randomUUID()}-Aa1!`;
+}
+
 const databaseUrl = required("DATABASE_URL");
 required("BETTER_AUTH_SECRET");
 const outputPath = required("COMPENSA_E2E_FIXTURE_PATH");
@@ -48,19 +53,19 @@ assertDestructiveSeedSafety(databaseUrl);
 const credentials = {
   admin: {
     email: "admin-ai-e2e@example.com",
-    password: "Compensa-E2E-Admin-2026!",
+    password: ephemeralPassword("Admin"),
     name: "AI E2E Admin",
     role: "ADMIN" as const,
   },
   evaluator: {
     email: "evaluator-ai-e2e@example.com",
-    password: "Compensa-E2E-Evaluator-2026!",
+    password: ephemeralPassword("Evaluator"),
     name: "AI E2E Evaluator",
     role: "EVALUATOR" as const,
   },
   reviewer: {
     email: "reviewer-ai-e2e@example.com",
-    password: "Compensa-E2E-Reviewer-2026!",
+    password: ephemeralPassword("Reviewer"),
     name: "AI E2E Reviewer",
     role: "REVIEWER" as const,
   },
