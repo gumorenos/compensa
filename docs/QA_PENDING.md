@@ -1,6 +1,6 @@
 # Compensa — QA pendiente
 
-Actualizado: 2026-08-25
+Actualizado: 2026-08-30
 
 Este archivo es el inventario único de validaciones conocidas que **todavía no cubre el CI automatizado**. Deben ejecutarse antes de considerar Compensa listo para usuarios externos/producción. Si una prueba pasa posteriormente, debe moverse fuera de las secciones pendientes en el mismo cambio que la automatiza o documenta.
 
@@ -39,6 +39,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Fundación de asistencia IA: contrato provider-neutral sin scoring/grados, validación estricta de campos/dimensiones/niveles/confianza, evidencia anclada al descriptivo fijado, aislamiento tenant, fingerprint de inputs, descarte de resultados obsoletos y persistencia atómica de run/sugerencias/evidencia/preguntas/auditoría sin modificar decisiones, puntos, grado o workflow.
 - Resolución humana de sugerencias IA: contrato estricto ACCEPTED/MODIFIED/REJECTED, UUID adversarial seguro, aislamiento tenant, bloqueo por estado/staleness, reutilización atómica del motor determinístico, abstención, concurrencia, actor/auditoría, rollback, semántica e inmutabilidad PostgreSQL sin sobrescribir la sugerencia original.
 - Gobernanza IA por tenant: default-off sin fila, opt-in independiente de procesamiento externo, revocación consistente, permiso ADMIN dedicado `MANAGE_AI_ASSISTANCE`, aislamiento PostgreSQL, constraint de consentimiento y actualización+auditoría atómicas sin invocar proveedor, scoring ni rutas Gold Standard/HOLDOUT/calibración.
+- Workflow local de asistencia IA: binding fixture default-off, provider determinístico in-process sin red ni confianza inventada, tenant gate, procesamiento LOCAL sin consentimiento externo, provider-unavailable seguro, generación sin mutar decisiones/puntos/grado/estado, historial tenant-scoped tras revocación, resolución por la frontera humana existente y protección contra UUID/cross-tenant/cross-valuation tampering sin consultar scoring, Gold Standard, HOLDOUT o calibración desde la superficie de asistencia.
 
 ## Pendiente antes de conectar un proveedor IA real
 
@@ -52,8 +53,8 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Validar que errores/timeouts del proveedor no escriben decisiones ni resultados parciales y dejan el flujo manual disponible.
 - Definir UX de consentimiento/aviso cuando el contenido del puesto vaya a salir de la infraestructura del cliente.
 - Ejecutar revisión de seguridad y privacidad específica del proveedor antes de habilitar tráfico real.
-- Antes del primer proveedor externo, recorrer el flujo completo con provider fixture/local determinístico: generar → revisar → aceptar/modificar/rechazar → recalcular cuando corresponda.
-- En esa UI futura, confirmar que ADMIN/EVALUATOR pueden generar y resolver mediante `EVALUATE`, REVIEWER recibe `FORBIDDEN` y manipular HTML/Server Action no evita el permiso.
+- Antes del primer proveedor externo, recorrer en navegador el flujo completo con el provider fixture/local determinístico en `/valuations/<valuationId>/ai-assistance`: generar → revisar → aceptar/modificar/rechazar → recalcular cuando corresponda.
+- Confirmar en la UI operativa que ADMIN/EVALUATOR pueden generar y resolver mediante `EVALUATE`, REVIEWER recibe rechazo backend si intenta mutar y manipular HTML/Server Action no evita el permiso.
 - Probar sugerencia con abstención: no debe poder aceptarse; modificar exige nivel humano explícito y rechazar no debe tocar decisión/puntos/grado.
 - Abrir la misma sugerencia en dos pestañas/usuarios y confirmar una única resolución visible, error seguro al segundo intento y actor correcto en historial/auditoría.
 - Cambiar de tenant durante el flujo IA y confirmar que run, sugerencias, resolución, descriptivo y valoración del tenant anterior no se muestran ni pueden mutarse.
@@ -89,6 +90,31 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Inspeccionar red/logs al alternar la configuración y confirmar que no existe llamada a proveedor/modelo, no se envían descriptivos/evidencia y no se requieren API keys.
 - Confirmar que el modo manual de Puestos/Valoraciones funciona igual con asistencia deshabilitada.
 - Revisar `/ai-assistance` en desktop/móvil y verificar legibilidad del aviso de procesamiento externo y de los controles.
+
+### Workflow local de asistencia IA
+
+- Con `COMPENSA_AI_FIXTURE_ENABLED=false` y asistencia habilitada para el tenant, abrir `/valuations/<valuationId>/ai-assistance`: debe indicar proveedor no disponible; históricos siguen visibles y no debe poder generarse una nueva corrida.
+- Activar `COMPENSA_AI_FIXTURE_ENABLED=true` en staging y reiniciar la app; confirmar aviso visible `Modo de prueba local` y que nunca se presenta el fixture como recomendación real.
+- Inspeccionar red y logs durante una corrida del fixture y confirmar cero tráfico a proveedor/modelo externo y ausencia total de API keys requeridas.
+- Con asistencia del tenant deshabilitada, confirmar que la valoración manual sigue funcionando y que generación/resolución IA están bloqueadas tanto visualmente como en backend.
+- Como ADMIN y EVALUATOR, generar y resolver mediante `EVALUATE`; como REVIEWER, leer histórico pero intentar manualmente las Server Actions y confirmar `FORBIDDEN`.
+- Habilitar asistencia del tenant dejando `externalProcessingAllowed=false` y confirmar que el fixture `LOCAL` puede generar normalmente.
+- Antes/después de generar una corrida, cotejar decisiones, `total_points`, `grade_code` y estado: generación no debe modificar ninguno.
+- Para sugerencia concreta, aceptar y confirmar exactamente el nivel sugerido, source `AI_ACCEPTED`, resolución inmutable y recálculo solo a través del motor determinístico cuando corresponda.
+- Para sugerencia concreta, modificar y confirmar nivel humano explícitamente diferente, source `AI_MODIFIED` y recálculo determinístico cuando corresponda.
+- Rechazar sugerencia y confirmar que no crea/modifica decisión, puntos ni grado.
+- Probar abstención: no debe existir acción de aceptar; modificar exige nivel humano explícito; rechazar no debe tocar decisión/puntos/grado.
+- Confirmar que el campo de justificación humana inicia vacío y que el rationale del fixture nunca se copia automáticamente.
+- Refrescar después de generar/resolver y confirmar persistencia de la última corrida, evidencia, preguntas y resolución; los registros históricos anteriores deben seguir en DB e inmutables aunque esta primera UI muestre solo la corrida más reciente.
+- Generar una segunda corrida y confirmar que la UI muestra la más reciente sin borrar ni reescribir la anterior.
+- Deshabilitar asistencia del tenant después de generar: histórico debe permanecer visible, mientras nuevas corridas y resoluciones pendientes quedan bloqueadas también en backend.
+- Cambiar de tenant durante el flujo y confirmar que corrida, sugerencias, evidencia, preguntas y resoluciones del tenant anterior no aparecen ni pueden mutarse.
+- Manipular `valuationId` y `suggestionId` con UUID malformado, otro tenant y una sugerencia de otra valoración del mismo tenant; confirmar rechazo seguro sin mutar ninguna valoración relacionada.
+- Abrir la misma sugerencia en dos pestañas/usuarios y resolver simultáneamente; solo una resolución debe persistir y el segundo intento debe fallar de forma segura mostrando el estado correcto tras refresh.
+- Cambiar la valoración a IN_REVIEW o APPROVED y confirmar que la ruta conserva lectura histórica pero deshabilita generación/resolución.
+- Cotejar `AI_ASSISTANCE_RECORDED` y `AI_SUGGESTION_RESOLVED` en auditoría: organización y actor deben corresponder a quien ejecutó la acción y el payload no debe contener descriptivo/rationale/evidencia/justificación sensible.
+- Confirmar visualmente que Gold Standard, HOLDOUT y calibración no se muestran ni se filtran a través de la ruta de asistencia.
+- Revisar navegación Valoración ↔ Asistencia IA, rationale/evidencia largos, selects y formularios en desktop/tablet/móvil.
 
 ### Inicio operativo
 
