@@ -12,6 +12,7 @@ export interface AIAssistanceProviderBinding {
 }
 
 export interface ProviderBindingEnvironment {
+  [key: string]: string | undefined;
   COMPENSA_AI_FIXTURE_ENABLED?: string;
 }
 
