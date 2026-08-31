@@ -100,8 +100,20 @@ jobs:
           set -euo pipefail
           npm run test:e2e:seed
 
-          PORT=3210 HOSTNAME=127.0.0.1 npm start >/tmp/compensa-e2e-app.log 2>&1 &
-          app_pid=$!
+          e2e_cid="$(docker run -d \
+            --network host \
+            --read-only \
+            --tmpfs /tmp \
+            --tmpfs /app/.next/cache \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
+            -e BETTER_AUTH_URL="$BETTER_AUTH_URL" \
+            -e COMPENSA_AI_FIXTURE_ENABLED="$COMPENSA_AI_FIXTURE_ENABLED" \
+            -e PORT=3210 \
+            -e HOSTNAME=0.0.0.0 \
+            compensa-ci:latest)"
 
           chrome_bin="$(command -v google-chrome || command -v chromium || true)"
           test -n "$chrome_bin"
@@ -109,6 +121,12 @@ jobs:
             --headless=new \
             --no-sandbox \
             --disable-dev-shm-usage \
+            --disable-background-networking \
+            --disable-component-update \
+            --disable-default-apps \
+            --disable-sync \
+            --metrics-recording-only \
+            --no-first-run \
             --remote-debugging-port=9222 \
             --remote-allow-origins='*' \
             --user-data-dir=/tmp/compensa-e2e-chrome \
@@ -116,11 +134,12 @@ jobs:
           chrome_pid=$!
 
           cleanup() {
-            echo '--- Compensa E2E app log ---'
-            cat /tmp/compensa-e2e-app.log || true
+            echo '--- Compensa E2E container log ---'
+            docker logs "$e2e_cid" || true
             echo '--- Chrome E2E log ---'
             cat /tmp/compensa-e2e-chrome.log || true
-            kill "$chrome_pid" "$app_pid" >/dev/null 2>&1 || true
+            kill "$chrome_pid" >/dev/null 2>&1 || true
+            docker rm -f "$e2e_cid" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
 
