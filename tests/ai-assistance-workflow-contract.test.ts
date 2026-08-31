@@ -56,13 +56,15 @@ describe("application-facing AI assistance workflow contract", () => {
     expect(providerSource).not.toContain("https://");
   });
 
-  it("enforces tenant governance in the application service before generation and resolution", async () => {
+  it("enforces tenant governance and valuation scope before generation and resolution", async () => {
     const workflow = await source("src/application/ai-assistance-workflow-service.ts");
     expect(workflow).toContain("this.requireEnabled(organizationId)");
     expect(workflow).toContain('this.binding.processingMode === "EXTERNAL"');
     expect(workflow).toContain("settings.externalProcessingAllowed");
     expect(workflow).toContain("AIAssistanceService");
     expect(workflow).toContain("AIAssistanceResolutionService");
+    expect(workflow).toContain("r.valuation_id = $3");
+    expect(workflow).toContain("AI_WORKFLOW_SUGGESTION_NOT_FOUND");
     expect(workflow).not.toContain("evaluateValuation");
     expect(workflow).not.toContain("gold_standard");
     expect(workflow).not.toContain("calibration_");
