@@ -40,6 +40,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Resolución humana de sugerencias IA: contrato estricto ACCEPTED/MODIFIED/REJECTED, UUID adversarial seguro, aislamiento tenant, bloqueo por estado/staleness, reutilización atómica del motor determinístico, abstención, concurrencia, actor/auditoría, rollback, semántica e inmutabilidad PostgreSQL sin sobrescribir la sugerencia original.
 - Gobernanza IA por tenant: default-off sin fila, opt-in independiente de procesamiento externo, revocación consistente, permiso ADMIN dedicado `MANAGE_AI_ASSISTANCE`, aislamiento PostgreSQL, constraint de consentimiento y actualización+auditoría atómicas sin invocar proveedor, scoring ni rutas Gold Standard/HOLDOUT/calibración.
 - Workflow local de asistencia IA: binding fixture default-off, provider determinístico in-process sin red ni confianza inventada, tenant gate, procesamiento LOCAL sin consentimiento externo, provider-unavailable seguro, generación sin mutar decisiones/puntos/grado/estado, historial tenant-scoped tras revocación, resolución por la frontera humana existente y protección contra UUID/cross-tenant/cross-valuation tampering sin consultar scoring, Gold Standard, HOLDOUT o calibración desde la superficie de asistencia.
+- E2E de navegador del workflow local IA en Chrome headless contra la imagen Docker hardened: login real ADMIN/EVALUATOR/REVIEWER, opt-in del tenant manteniendo procesamiento externo apagado, guard de valoración sin descriptivo, generación `LOCAL_FIXTURE`, aceptación explícita con justificación humana, REVIEWER en solo lectura, actor/source/auditoría PostgreSQL y ausencia de requests HTTP(S) del target web fuera del origen local de Compensa.
 
 ## Pendiente antes de conectar un proveedor IA real
 
@@ -67,7 +68,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Probar login correcto/incorrecto y redirección a `/sign-in` sin sesión.
 - Confirmar logout y rechazo de sesión cerrada.
 - Probar expiración/renovación de sesión en staging.
-- Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos.
+- Crear ADMIN, EVALUATOR y REVIEWER reales y recorrer la matriz visual de permisos más allá del smoke automatizado de asistencia IA.
 - Confirmar visualmente que ADMIN ve Inicio / Puestos / Valoraciones / Comparar / Metodologías / Gold Standard / Calibración / IA; EVALUATOR y REVIEWER ven Inicio / Puestos / Valoraciones / Comparar / Metodologías / Calibración pero no Gold Standard ni IA.
 - Confirmar que `/sign-in` y una request sin membership no muestran links de aplicación en la barra superior.
 - Intentar Server Actions manualmente con rol sin permiso y confirmar rechazo backend aunque se manipule HTML.
@@ -79,28 +80,26 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 
 ### Gobernanza de asistencia IA
 
-- Abrir `/ai-assistance` como ADMIN y confirmar que la ausencia de configuración previa se muestra como asistencia y procesamiento externo deshabilitados.
 - Abrir `/ai-assistance` como EVALUATOR y REVIEWER escribiendo la URL directamente y confirmar `FORBIDDEN`; no basta con ocultar el link.
-- Habilitar solo asistencia IA y confirmar persistencia tras refresh sin habilitar procesamiento externo.
+- En staging, refrescar después de habilitar solo asistencia IA y confirmar persistencia sin habilitar procesamiento externo.
 - Habilitar procesamiento externo con asistencia habilitada y confirmar ambos flags en el tenant correcto.
 - Deshabilitar asistencia después de haber autorizado procesamiento externo y confirmar que ambos flags quedan en `false`.
 - Cambiar de organización activa y confirmar que los flags de un tenant no aparecen ni afectan al otro.
 - Confirmar que `AI_ASSISTANCE_SETTINGS_UPDATED` registra organización y actor correctos para habilitación, consentimiento y revocación.
 - Manipular el formulario para intentar `externalProcessingAllowed=true` con asistencia deshabilitada y confirmar que no queda un estado contradictorio.
-- Inspeccionar red/logs al alternar la configuración y confirmar que no existe llamada a proveedor/modelo, no se envían descriptivos/evidencia y no se requieren API keys.
+- En staging, inspeccionar logs/proceso además del target web para confirmar que alternar la configuración no invoca proveedor/modelo, no envía descriptivos/evidencia y no requiere API keys.
 - Confirmar que el modo manual de Puestos/Valoraciones funciona igual con asistencia deshabilitada.
 - Revisar `/ai-assistance` en desktop/móvil y verificar legibilidad del aviso de procesamiento externo y de los controles.
 
 ### Workflow local de asistencia IA
 
 - Con `COMPENSA_AI_FIXTURE_ENABLED=false` y asistencia habilitada para el tenant, abrir `/valuations/<valuationId>/ai-assistance`: debe indicar proveedor no disponible; históricos siguen visibles y no debe poder generarse una nueva corrida.
-- Activar `COMPENSA_AI_FIXTURE_ENABLED=true` en staging y reiniciar la app; confirmar aviso visible `Modo de prueba local` y que nunca se presenta el fixture como recomendación real.
-- Inspeccionar red y logs durante una corrida del fixture y confirmar cero tráfico a proveedor/modelo externo y ausencia total de API keys requeridas.
+- Activar `COMPENSA_AI_FIXTURE_ENABLED=true` en staging y reiniciar la app; confirmar que la configuración real del entorno expone el aviso `Modo de prueba local` sin presentar el fixture como recomendación real.
+- En staging, inspeccionar logs/proceso y red del host durante una corrida para complementar la aserción CDP del CI: cero tráfico a proveedor/modelo externo y ausencia total de API keys requeridas.
 - Con asistencia del tenant deshabilitada, confirmar que la valoración manual sigue funcionando y que generación/resolución IA están bloqueadas tanto visualmente como en backend.
-- Como ADMIN y EVALUATOR, generar y resolver mediante `EVALUATE`; como REVIEWER, leer histórico pero intentar manualmente las Server Actions y confirmar `FORBIDDEN`.
-- Habilitar asistencia del tenant dejando `externalProcessingAllowed=false` y confirmar que el fixture `LOCAL` puede generar normalmente.
-- Antes/después de generar una corrida, cotejar decisiones, `total_points`, `grade_code` y estado: generación no debe modificar ninguno.
-- Para sugerencia concreta, aceptar y confirmar exactamente el nivel sugerido, source `AI_ACCEPTED`, resolución inmutable y recálculo solo a través del motor determinístico cuando corresponda.
+- Como ADMIN/EVALUATOR, repetir una mutación en staging; como REVIEWER, intentar manualmente la Server Action manipulada y confirmar `FORBIDDEN` backend aunque el smoke automatizado ya valide la UI de solo lectura.
+- Antes/después de generar una corrida de staging, cotejar decisiones, `total_points`, `grade_code` y estado para confirmar en el entorno desplegado que generación no modifica ninguno.
+- Repetir una aceptación con un caso representativo de staging y cotejar nivel, source `AI_ACCEPTED`, resolución inmutable y recálculo solo a través del motor determinístico cuando corresponda.
 - Para sugerencia concreta, modificar y confirmar nivel humano explícitamente diferente, source `AI_MODIFIED` y recálculo determinístico cuando corresponda.
 - Rechazar sugerencia y confirmar que no crea/modifica decisión, puntos ni grado.
 - Probar abstención: no debe existir acción de aceptar; modificar exige nivel humano explícito; rechazar no debe tocar decisión/puntos/grado.
@@ -112,7 +111,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 - Manipular `valuationId` y `suggestionId` con UUID malformado, otro tenant y una sugerencia de otra valoración del mismo tenant; confirmar rechazo seguro sin mutar ninguna valoración relacionada.
 - Abrir la misma sugerencia en dos pestañas/usuarios y resolver simultáneamente; solo una resolución debe persistir y el segundo intento debe fallar de forma segura mostrando el estado correcto tras refresh.
 - Cambiar la valoración a IN_REVIEW o APPROVED y confirmar que la ruta conserva lectura histórica pero deshabilita generación/resolución.
-- Cotejar `AI_ASSISTANCE_RECORDED` y `AI_SUGGESTION_RESOLVED` en auditoría: organización y actor deben corresponder a quien ejecutó la acción y el payload no debe contener descriptivo/rationale/evidencia/justificación sensible.
+- Cotejar `AI_ASSISTANCE_RECORDED` y los cambios de gobernanza en auditoría; el CI ya verifica actor/redacción de `AI_SUGGESTION_RESOLVED`, pero todavía debe confirmarse el resto del historial en staging.
 - Confirmar visualmente que Gold Standard, HOLDOUT y calibración no se muestran ni se filtran a través de la ruta de asistencia.
 - Revisar navegación Valoración ↔ Asistencia IA, rationale/evidencia largos, selects y formularios en desktop/tablet/móvil.
 
@@ -325,7 +324,7 @@ Este archivo es el inventario único de validaciones conocidas que **todavía no
 
 - Manejo consistente de errores de Server Actions con mensajes de usuario.
 - Accesibilidad, lector de pantalla y navegación por teclado.
-- E2E automatizado de navegador (Playwright o equivalente).
+- Ampliar E2E automatizado de navegador más allá del smoke crítico de asistencia IA: autenticación general, puestos, valoración manual/revisión, imports, comparables y calibración.
 - Recovery de contraseña y correo transaccional.
 - Evaluar MFA/SSO según cliente.
 - Rate limiting distribuido si hay múltiples instancias.

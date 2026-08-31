@@ -88,3 +88,86 @@ jobs:
 
           root_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3200/)"
           test "$root_status" = "307"
+      - name: Browser E2E - local AI assistance
+        shell: bash
+        env:
+          BETTER_AUTH_URL: http://127.0.0.1:3210
+          COMPENSA_AI_FIXTURE_ENABLED: "true"
+          COMPENSA_E2E_ALLOW_DESTRUCTIVE_SEED: "true"
+          COMPENSA_E2E_FIXTURE_PATH: /tmp/compensa-ai-e2e-fixture.json
+          COMPENSA_E2E_BASE_URL: http://127.0.0.1:3210
+          COMPENSA_E2E_CDP_URL: http://127.0.0.1:9222
+        run: |
+          set -euo pipefail
+
+          if env -u COMPENSA_E2E_ALLOW_DESTRUCTIVE_SEED npm run test:e2e:seed >/tmp/compensa-e2e-seed-guard.log 2>&1; then
+            echo "Destructive E2E seed ran without explicit opt-in." >&2
+            exit 1
+          fi
+          if DATABASE_URL="postgres://compensa:compensa@127.0.0.1:5432/compensa" npm run test:e2e:seed >/tmp/compensa-e2e-db-guard.log 2>&1; then
+            echo "Destructive E2E seed accepted a non-test database name." >&2
+            exit 1
+          fi
+
+          npm run test:e2e:seed
+
+          e2e_cid="$(docker run -d \
+            --network host \
+            --read-only \
+            --tmpfs /tmp \
+            --tmpfs /app/.next/cache \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
+            -e BETTER_AUTH_URL="$BETTER_AUTH_URL" \
+            -e COMPENSA_AI_FIXTURE_ENABLED="$COMPENSA_AI_FIXTURE_ENABLED" \
+            -e PORT=3210 \
+            -e HOSTNAME=0.0.0.0 \
+            compensa-ci:latest)"
+
+          chrome_bin="$(command -v google-chrome || command -v chromium || true)"
+          test -n "$chrome_bin"
+          "$chrome_bin" \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-background-networking \
+            --disable-component-update \
+            --disable-default-apps \
+            --disable-sync \
+            --metrics-recording-only \
+            --no-first-run \
+            --remote-debugging-port=9222 \
+            --remote-allow-origins='*' \
+            --user-data-dir=/tmp/compensa-e2e-chrome \
+            about:blank >/tmp/compensa-e2e-chrome.log 2>&1 &
+          chrome_pid=$!
+
+          cleanup() {
+            echo '--- Compensa E2E container log ---'
+            docker logs "$e2e_cid" || true
+            echo '--- Chrome E2E log ---'
+            cat /tmp/compensa-e2e-chrome.log || true
+            kill "$chrome_pid" >/dev/null 2>&1 || true
+            docker rm -f "$e2e_cid" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3210/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3210/api/health | grep -q '"status":"ok"'
+
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9222/json/version >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:9222/json/version >/dev/null
+
+          npm run test:e2e:ai
