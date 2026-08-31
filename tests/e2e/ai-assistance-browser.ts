@@ -38,6 +38,18 @@ interface RuntimeEvaluation {
   exceptionDetails?: unknown;
 }
 
+interface CdpMessage {
+  id?: number;
+  method?: string;
+  params?: {
+    request?: {
+      url?: string;
+    };
+  };
+  result?: unknown;
+  error?: { message?: string };
+}
+
 const fixturePath = required("COMPENSA_E2E_FIXTURE_PATH");
 const databaseUrl = required("DATABASE_URL");
 const baseUrl = (process.env.COMPENSA_E2E_BASE_URL ?? "http://127.0.0.1:3210").replace(/\/$/, "");
@@ -57,14 +69,16 @@ function sleep(milliseconds: number): Promise<void> {
 class CdpPage {
   private nextId = 1;
   private readonly pending = new Map<number, PendingCommand>();
+  private readonly observedRequestUrls = new Set<string>();
 
   private constructor(private readonly socket: WebSocket) {
     this.socket.addEventListener("message", (event) => {
-      const message = JSON.parse(String(event.data)) as {
-        id?: number;
-        result?: unknown;
-        error?: { message?: string };
-      };
+      const message = JSON.parse(String(event.data)) as CdpMessage;
+      if (message.method === "Network.requestWillBeSent") {
+        const url = message.params?.request?.url;
+        if (url !== undefined) this.observedRequestUrls.add(url);
+      }
+
       if (message.id === undefined) return;
       const pending = this.pending.get(message.id);
       if (pending === undefined) return;
@@ -121,6 +135,19 @@ class CdpPage {
   async clearSession(): Promise<void> {
     await this.command("Network.clearBrowserCookies");
     await this.command("Network.clearBrowserCache");
+  }
+
+  unexpectedHttpRequests(allowedOrigin: string): string[] {
+    return [...this.observedRequestUrls]
+      .filter((url) => url.startsWith("http://") || url.startsWith("https://"))
+      .filter((url) => {
+        try {
+          return new URL(url).origin !== allowedOrigin;
+        } catch {
+          return true;
+        }
+      })
+      .sort();
   }
 
   async navigate(path: string): Promise<void> {
@@ -283,6 +310,8 @@ try {
   assert.equal(await page.hasVisibleText("Modificar sugerencia"), false);
   assert.equal(await page.hasVisibleText("Rechazar sugerencia"), false);
 
+  assert.deepEqual(page.unexpectedHttpRequests(new URL(baseUrl).origin), []);
+
   const settings = await pool.query(
     `SELECT assistance_enabled, external_processing_allowed, updated_by_user_id
      FROM ai_assistance_settings
@@ -359,11 +388,12 @@ try {
   assert.equal(auditPayload.includes("Salida determinística del fixture local"), false);
 
   console.log(
-    "AI browser E2E PASS: ADMIN governance, EVALUATOR local assistance, REVIEWER read-only, PostgreSQL effects verified.",
+    "AI browser E2E PASS: ADMIN governance, EVALUATOR local assistance, REVIEWER read-only, local-only HTTP traffic, PostgreSQL effects verified.",
   );
 } catch (error) {
   console.error(`Browser URL at failure: ${await page.currentUrl().catch(() => "unavailable")}`);
   console.error(`Browser body at failure:\n${await page.bodyText().catch(() => "unavailable")}`);
+  console.error(`Observed HTTP(S) requests:\n${page.unexpectedHttpRequests(new URL(baseUrl).origin).join("\n")}`);
   throw error;
 } finally {
   await pool.end();
