@@ -164,6 +164,7 @@ describe("AI assistance application workflow", () => {
 
     const result = await workflow.resolve(
       fixture.organization.id,
+      fixture.valuation.id,
       concrete.id,
       actorId,
       {
@@ -214,7 +215,13 @@ describe("AI assistance application workflow", () => {
     expect(state.settings.assistanceEnabled).toBe(false);
     expect(state.latest?.run.id).toBe(run.id);
     await expect(
-      workflow.resolve(fixture.organization.id, unresolved.id, actorId, { resolution: "REJECTED" }),
+      workflow.resolve(
+        fixture.organization.id,
+        fixture.valuation.id,
+        unresolved.id,
+        actorId,
+        { resolution: "REJECTED" },
+      ),
     ).rejects.toMatchObject({ code: "AI_ASSISTANCE_DISABLED" });
   });
 
@@ -251,5 +258,81 @@ describe("AI assistance application workflow", () => {
     await expect(
       workflow.getState(fixtureB.organization.id, fixtureA.valuation.id),
     ).rejects.toMatchObject({ code: "AI_WORKFLOW_VALUATION_NOT_FOUND" });
+  });
+
+  it("rejects malformed and same-tenant cross-valuation suggestion tampering without mutations", async () => {
+    const fixture = await createFixture("workflow-cross-valuation");
+    const actorId = await createActor();
+    await governance.updateSettings(fixture.organization.id, actorId, {
+      assistanceEnabled: true,
+      externalProcessingAllowed: false,
+    });
+    const workflow = new AIAssistanceWorkflowService(pool, localBinding);
+
+    const secondJob = await repository.createJob(fixture.organization.id, {
+      name: "Analista de Tesorería",
+      area: "Finanzas",
+      jobFamily: "Finance",
+    });
+    await repository.createJobDescriptionVersion(fixture.organization.id, secondJob.id, {
+      content:
+        "Analiza la posición de caja diaria y coordina pagos conforme a políticas definidas. " +
+        "Escala excepciones y documenta decisiones operativas.",
+      sourceLabel: "Second workflow fixture",
+    });
+    const secondValuation = await valuationService.startValuation(
+      fixture.organization.id,
+      secondJob.id,
+      fixture.methodology.id,
+    );
+
+    const firstRun = await workflow.generate(
+      fixture.organization.id,
+      fixture.valuation.id,
+      actorId,
+    );
+    const secondRun = await workflow.generate(
+      fixture.organization.id,
+      secondValuation.id,
+      actorId,
+    );
+    const secondSuggestion = secondRun.suggestions[0]!;
+
+    await expect(
+      workflow.resolve(
+        fixture.organization.id,
+        fixture.valuation.id,
+        "not-a-uuid",
+        actorId,
+        { resolution: "REJECTED" },
+      ),
+    ).rejects.toMatchObject({ code: "AI_WORKFLOW_SUGGESTION_NOT_FOUND" });
+
+    await expect(
+      workflow.resolve(
+        fixture.organization.id,
+        fixture.valuation.id,
+        secondSuggestion.id,
+        actorId,
+        { resolution: "REJECTED", note: "tampered cross-valuation target" },
+      ),
+    ).rejects.toMatchObject({ code: "AI_WORKFLOW_SUGGESTION_NOT_FOUND" });
+
+    const resolutions = await pool.query(
+      `SELECT count(*)::int AS count
+       FROM ai_suggestion_resolutions
+       WHERE organization_id = $1`,
+      [fixture.organization.id],
+    );
+    expect(resolutions.rows[0]!.count).toBe(0);
+    expect(
+      await repository.listValuationDecisions(fixture.organization.id, fixture.valuation.id),
+    ).toEqual([]);
+    expect(
+      await repository.listValuationDecisions(fixture.organization.id, secondValuation.id),
+    ).toEqual([]);
+
+    expect(firstRun.valuationId).toBe(fixture.valuation.id);
+    expect(secondRun.valuationId).toBe(secondValuation.id);
   });
 });
