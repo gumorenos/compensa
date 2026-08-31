@@ -20,6 +20,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 export type AIAssistanceWorkflowErrorCode =
   | "AI_WORKFLOW_VALUATION_NOT_FOUND"
+  | "AI_WORKFLOW_SUGGESTION_NOT_FOUND"
   | "AI_ASSISTANCE_DISABLED"
   | "AI_PROVIDER_UNAVAILABLE"
   | "AI_EXTERNAL_PROCESSING_NOT_ALLOWED";
@@ -121,11 +122,28 @@ export class AIAssistanceWorkflowService {
 
   async resolve(
     organizationId: string,
+    valuationId: string,
     suggestionId: string,
     actorUserId: string,
     input: AIAssistanceResolutionInput,
   ): Promise<AIAssistanceResolutionResult> {
+    if (!UUID_PATTERN.test(valuationId)) throw valuationNotFound();
+    if (!UUID_PATTERN.test(suggestionId)) throw suggestionNotFound();
     await this.requireEnabled(organizationId);
+
+    const relation = await this.pool.query(
+      `SELECT 1
+       FROM ai_factor_suggestions s
+       JOIN ai_assistance_runs r
+         ON r.id = s.run_id
+        AND r.organization_id = s.organization_id
+       WHERE s.organization_id = $1
+         AND s.id = $2
+         AND r.valuation_id = $3`,
+      [organizationId, suggestionId, valuationId],
+    );
+    if (relation.rows.length === 0) throw suggestionNotFound();
+
     return this.resolution.resolve(organizationId, suggestionId, actorUserId, input);
   }
 
@@ -295,5 +313,12 @@ function valuationNotFound(): AIAssistanceWorkflowError {
   return new AIAssistanceWorkflowError(
     "AI_WORKFLOW_VALUATION_NOT_FOUND",
     "Valuation is not available in this organization.",
+  );
+}
+
+function suggestionNotFound(): AIAssistanceWorkflowError {
+  return new AIAssistanceWorkflowError(
+    "AI_WORKFLOW_SUGGESTION_NOT_FOUND",
+    "AI suggestion is not available for this valuation and organization.",
   );
 }
