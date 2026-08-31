@@ -99,6 +99,16 @@ jobs:
           COMPENSA_E2E_CDP_URL: http://127.0.0.1:9222
         run: |
           set -euo pipefail
+
+          if env -u COMPENSA_E2E_ALLOW_DESTRUCTIVE_SEED npm run test:e2e:seed >/tmp/compensa-e2e-seed-guard.log 2>&1; then
+            echo "Destructive E2E seed ran without explicit opt-in." >&2
+            exit 1
+          fi
+          if DATABASE_URL="postgres://compensa:compensa@127.0.0.1:5432/compensa" npm run test:e2e:seed >/tmp/compensa-e2e-db-guard.log 2>&1; then
+            echo "Destructive E2E seed accepted a non-test database name." >&2
+            exit 1
+          fi
+
           npm run test:e2e:seed
 
           e2e_cid="$(docker run -d \
