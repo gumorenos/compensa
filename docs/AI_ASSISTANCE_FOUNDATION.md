@@ -1,6 +1,6 @@
 # AI assistance foundation
 
-Stage 3 starts with a provider-neutral assistance boundary. Compensa does **not** connect to an external model in this stage merely because AI assistance is enabled for an organization.
+Stage 3 starts with a provider-neutral assistance boundary. Compensa does **not** connect to an external model merely because AI assistance is enabled for an organization.
 
 ## Product boundary
 
@@ -45,12 +45,12 @@ Only a user with `MANAGE_AI_ASSISTANCE` may change these settings; the current r
 
 The two controls have deliberately different meanings:
 
-- `assistance_enabled` allows Compensa to expose assisted workflows for that tenant once an application-facing workflow exists;
+- `assistance_enabled` allows Compensa to expose assisted workflows for that tenant;
 - `external_processing_allowed` records that the tenant permits job content to leave Compensa for an external processor **after** a reviewed provider binding exists.
 
 External processing cannot be allowed while assistance itself is disabled. Disabling assistance revokes external-processing consent as part of the same settings update. Every settings change is tenant-scoped, attributed to the authenticated actor and recorded in `security_audit_events`.
 
-Neither flag selects a model, stores an API key, invokes a provider or sends customer data anywhere. The current `/ai-assistance` surface is governance-only.
+Neither flag selects a model, stores an API key or by itself invokes a provider. The `/ai-assistance` administration surface is governance-only.
 
 ## Provider contract
 
@@ -75,9 +75,31 @@ The provider returns `unknown`; Compensa validates the payload at runtime before
 
 Partial suggestions and explicit abstention are valid. Missing evidence is not fabricated.
 
+## Local fixture workflow
+
+The first application-facing workflow uses `LocalFixtureAIAssistanceProvider`. It exists only to exercise the complete product boundary before any customer text is sent to an external model.
+
+The fixture:
+
+- runs in-process and performs no network request;
+- is disabled unless the server explicitly sets `COMPENSA_AI_FIXTURE_ENABLED=true`;
+- is classified as processing mode `LOCAL`;
+- therefore does not require `external_processing_allowed`;
+- emits deterministic test output with `confidence = null` rather than inventing model confidence;
+- deliberately includes a concrete suggestion and, when the methodology permits, an abstention/clarification so both paths can be exercised;
+- labels its rationale and UI as test output, **not a real AI recommendation**.
+
+The operational route is `/valuations/<valuationId>/ai-assistance`. Historical assistance is readable under the normal `VIEW` boundary. Generation and human resolution require `EVALUATE`, an editable valuation (`DRAFT` or `RETURNED`) and tenant `assistance_enabled=true`.
+
+Disabling tenant assistance does not delete or hide historical runs. It disables new generation and unresolved suggestion actions while leaving the manual valuation flow fully usable.
+
+Only the latest assistance run is shown in this first operational surface. The underlying runs remain immutable historical records.
+
 ## Evidence boundary
 
-For Stage 3 foundation, AI evidence is restricted to the pinned job description. Excerpts are normalized for whitespace/case and must be contained in that exact description version. Interview or external evidence is not accepted from the provider in this increment.
+For Stage 3 foundation, provider evidence is restricted to the pinned job description. Excerpts are normalized for whitespace/case and must be contained in that exact description version. Interview or external evidence is not accepted from the provider in this stage.
+
+The local fixture follows the same validator rather than bypassing it.
 
 ## Transaction and race safety
 
@@ -94,17 +116,21 @@ Generation itself never calls the scoring engine, writes `valuation_decisions`, 
 
 Human resolution uses the same `valuation-edit:<valuationId>` advisory-lock order as ordinary manual decision editing. Competing manual edits and AI resolutions for one valuation are serialized, and exactly one immutable resolution can exist for a suggestion. Resolution is allowed only while the valuation is `DRAFT` or `RETURNED` and only while the valuation still references the methodology and job-description versions used by the AI run.
 
+The application-facing workflow validates valuation and suggestion identifiers before PostgreSQL UUID casts and keeps every read/write scoped by `organization_id`.
+
 ## Access boundary
 
 Tenant governance requires `MANAGE_AI_ASSISTANCE` and is ADMIN-only in the current role matrix.
 
-When the application-facing generation/resolution UI is added, requesting and resolving assistance must continue to require `EVALUATE`: ADMIN and EVALUATOR may use assisted evaluation when the tenant has enabled it; REVIEWER remains read-only and cannot initiate or resolve suggestions. Enabling assistance at tenant level never expands an individual user's role permissions.
+Operational generation and human resolution require `EVALUATE`: ADMIN and EVALUATOR may use assisted evaluation when the tenant has enabled it; REVIEWER may inspect persisted assistance read-only but cannot initiate or resolve suggestions. Enabling assistance at tenant level never expands an individual user's role permissions.
 
 The application service receives the authenticated human actor ID so `AI_SUGGESTION_RESOLVED` valuation/security audit records can attribute the decision without placing rationale, evidence, notes or justification text in the security audit payload.
 
 ## Privacy and provider binding
 
-No provider SDK, API key, model environment variable or prompt containing customer data is introduced by tenant governance. Before enabling a real provider, a later provider-binding increment must make an explicit decision on:
+The local fixture introduces no provider SDK, API key or external request. `COMPENSA_AI_FIXTURE_ENABLED` is only an environment-level switch for deterministic in-process workflow testing.
+
+A future external provider binding must make explicit decisions on:
 
 - provider and model;
 - data retention and training policy;
@@ -120,16 +146,14 @@ A real external invocation must require all of the following independently:
 
 1. tenant assistance enabled;
 2. tenant external processing allowed;
-3. an approved/configured provider binding;
+3. an approved/configured provider binding classified as `EXTERNAL`;
 4. an authenticated user with the operational permission required for the action;
 5. the existing provider payload and evidence validation boundaries.
 
 The current schema stores provider/model identifiers on assistance runs and an input fingerprint, but the security audit payload intentionally excludes raw job-description text and evidence excerpts.
 
-## Next increment
+## Next increment after the local workflow
 
-The provider-neutral generation boundary, audited human resolution lifecycle and tenant governance gate are now defined without sending data to an external provider.
+The next safe step is **not** to wire an arbitrary LLM SDK immediately. First close the browser/manual QA for the local fixture workflow and confirm permissions, tenant switching, abstention, concurrent resolution, historical read-only behavior and manual-flow independence.
 
-The next safe increment is the **application-facing assistance workflow** behind `assistance_enabled`: allow an `EVALUATE` user to request assistance for an editable valuation, review persisted suggestions/evidence/questions, and accept/modify/reject them through the existing resolution service. The first end-to-end UI should use a deterministic fixture/local adapter so permissions, tenant switching, staleness, concurrency and human resolution can be exercised without external data transfer.
-
-Only after that workflow is stable should a real provider adapter be bound, and only after the privacy/retention, secrets, logging/redaction, quotas, timeout/retry and consent items in `docs/QA_PENDING.md` are resolved.
+Once that boundary is stable, design the first real provider adapter as a separate increment. It must resolve the privacy/retention, secrets, logging/redaction, quotas, timeout/retry, prompt-injection and consent items in `docs/QA_PENDING.md` before any real customer description is transmitted externally.
