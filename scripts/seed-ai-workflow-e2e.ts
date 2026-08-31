@@ -17,9 +17,33 @@ function required(name: string): string {
   return value.trim();
 }
 
+function assertDestructiveSeedSafety(databaseUrl: string): void {
+  if (process.env.COMPENSA_E2E_ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error(
+      "Refusing destructive E2E seed without COMPENSA_E2E_ALLOW_DESTRUCTIVE_SEED=true.",
+    );
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(databaseUrl);
+  } catch {
+    throw new Error("Refusing destructive E2E seed because DATABASE_URL is not a valid URL.");
+  }
+
+  const databaseName = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+  const localHost = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
+  if (!localHost || !databaseName.endsWith("_test")) {
+    throw new Error(
+      "Refusing destructive E2E seed: DATABASE_URL must target localhost/127.0.0.1 and a database ending in _test.",
+    );
+  }
+}
+
 const databaseUrl = required("DATABASE_URL");
 required("BETTER_AUTH_SECRET");
 const outputPath = required("COMPENSA_E2E_FIXTURE_PATH");
+assertDestructiveSeedSafety(databaseUrl);
 
 const credentials = {
   admin: {
