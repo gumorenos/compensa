@@ -78,11 +78,15 @@ describe("application-facing AI assistance workflow contract", () => {
     expect(actions).toContain("UUID_PATTERN.test(value)");
   });
 
-  it("keeps the operational UI explicit about human authority and the local test fixture", async () => {
+  it("keeps the operational UI explicit about prerequisites, human authority and the local test fixture", async () => {
     const page = await source("app/valuations/[valuationId]/ai-assistance/page.tsx");
+    const runtime = await source("src/web/ai-assistance-runtime.ts");
     const layout = await source("app/valuations/[valuationId]/layout.tsx");
 
     expect(layout).toContain("/ai-assistance");
+    expect(runtime).toContain("hasPinnedDescription: snapshot.valuation.jobDescriptionVersionId !== null");
+    expect(page).toContain("data.hasPinnedDescription &&");
+    expect(page).toContain("Esta valoración no tiene un descriptivo anclado.");
     expect(page).toContain("Modo de prueba local.");
     expect(page).toContain("no es recomendación real");
     expect(page).toContain("La persona sigue decidiendo");
