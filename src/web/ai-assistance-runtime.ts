@@ -12,6 +12,7 @@ export interface AIAssistancePageData {
   organizationName: string;
   valuationId: string;
   valuationStatus: string;
+  hasPinnedDescription: boolean;
   jobName: string;
   methodology: MethodologyDefinition;
   canEvaluate: boolean;
@@ -45,6 +46,7 @@ export async function getAIAssistancePageData(
     organizationName: context.organization.name,
     valuationId,
     valuationStatus: snapshot.valuation.status,
+    hasPinnedDescription: snapshot.valuation.jobDescriptionVersionId !== null,
     jobName: job.name,
     methodology: methodology.definition,
     canEvaluate: context.capabilities.canEvaluate,
