@@ -55,10 +55,10 @@ jobs:
           docker compose -f compose.staging.yml --profile ops config >/dev/null
       - name: Build staging image
         run: docker build --target runner -t compensa-ci:latest .
-      - name: Verify XLSX engine in standalone image
+      - name: Generate XLSX inside standalone image
         run: >-
           docker run --rm compensa-ci:latest
-          node -e "import('@excel.js/exceljs').then((m) => { const Workbook = m.Workbook ?? m.default?.Workbook; if (typeof Workbook !== 'function') process.exit(1); })"
+          node -e "import('@excel.js/exceljs').then(async (m) => { const Workbook = m.Workbook ?? m.default?.Workbook; if (typeof Workbook !== 'function') process.exit(1); const workbook = new Workbook(); const sheet = workbook.addWorksheet('QA'); sheet.addRow(['compensa', 1]); const bytes = await workbook.xlsx.writeBuffer(); if (!bytes || bytes.byteLength < 1000) process.exit(1); })"
       - name: Smoke-test staging container
         shell: bash
         run: |
