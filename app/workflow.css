@@ -28,6 +28,19 @@ button:disabled {
   filter: none;
 }
 
+.grid {
+  display: grid;
+  gap: 18px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .section-head,
 .status-line,
 .support-head,
@@ -51,6 +64,186 @@ button:disabled {
 .badge-evidence {
   background: #e9f2f5;
   color: #315d69;
+}
+
+.checkbox-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcfc;
+  cursor: pointer;
+}
+
+.checkbox-row:hover {
+  border-color: #b8c8cc;
+  background: white;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+
+.checkbox-row > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.checkbox-row strong {
+  font-size: 14px;
+}
+
+.checkbox-row small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.status-card {
+  min-height: 132px;
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+  border-color: #bccacc;
+}
+
+.status-card-count {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-card-count strong {
+  font-size: 2rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-card-count span {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.workflow-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.workflow-step {
+  position: relative;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.workflow-step strong,
+.workflow-step span {
+  display: block;
+}
+
+.workflow-step strong {
+  margin-top: 7px;
+  font-size: 15px;
+}
+
+.workflow-step span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workflow-step-number {
+  display: grid !important;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 !important;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary) !important;
+  font-size: 12px !important;
+  font-weight: 800;
+}
+
+.valuation-journey {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: -8px 0 24px;
+}
+
+.journey-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.journey-index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.journey-step.complete {
+  border-color: #bed9ca;
+  background: #f4faf6;
+}
+
+.journey-step.complete .journey-index {
+  background: #e5f3eb;
+  color: var(--success);
+}
+
+.journey-step.current {
+  border-color: #9eb4b8;
+  box-shadow: inset 3px 0 var(--primary);
+}
+
+.journey-copy strong,
+.journey-copy small {
+  display: block;
+}
+
+.journey-copy strong {
+  font-size: 13px;
+}
+
+.journey-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .description-preview {
@@ -116,6 +309,8 @@ button:disabled {
   margin: -8px 0 24px;
   padding: 13px 16px;
   border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-size: 14px;
 }
 
@@ -244,9 +439,18 @@ button:disabled {
   line-height: 1.45;
 }
 
+@media (max-width: 900px) {
+  .grid-3,
+  .workflow-strip,
+  .valuation-journey {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 800px) {
   .valuation-layout,
-  .evidence-grid {
+  .evidence-grid,
+  .grid-2 {
     grid-template-columns: 1fr;
   }
 
@@ -259,5 +463,17 @@ button:disabled {
   .notice {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .grid-3,
+  .workflow-strip,
+  .valuation-journey {
+    grid-template-columns: 1fr;
+  }
+
+  .status-card {
+    min-height: 0;
   }
 }
