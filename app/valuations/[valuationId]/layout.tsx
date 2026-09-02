@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ValuationTabs } from "./valuation-tabs.js";
 
 export default async function ValuationLayout({
   children,
@@ -12,14 +13,7 @@ export default async function ValuationLayout({
   return (
     <div className="stack">
       <div className="valuation-context-nav">
-        <nav className="valuation-tabs" aria-label="Secciones de la valoración">
-          <Link href={`/valuations/${valuationId}`} className="valuation-tab">
-            Evaluación
-          </Link>
-          <Link href={`/valuations/${valuationId}/ai-assistance`} className="valuation-tab">
-            Asistencia IA
-          </Link>
-        </nav>
+        <ValuationTabs valuationId={valuationId} />
         <Link href="/valuations" className="valuation-back-link">← Volver a la bandeja</Link>
       </div>
 
