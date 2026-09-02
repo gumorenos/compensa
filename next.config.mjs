@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  // XLSX templates are generated lazily with a dynamic import. Keep the spreadsheet
-  // engine in the standalone runtime even when Next's file tracer cannot infer that path.
-  outputFileTracingIncludes: {
-    "/*": ["./node_modules/@excel.js/exceljs/**/*"],
-  },
+  // ExcelJS is loaded only on server-side spreadsheet paths. Externalizing it lets
+  // Webpack/Next output tracing preserve its complete runtime dependency tree in
+  // the standalone image instead of copying only the top-level dynamically loaded package.
+  serverExternalPackages: ["@excel.js/exceljs"],
   experimental: {
     serverActions: {
       // The application parser enforces a 5 MiB file limit. Leave multipart overhead
