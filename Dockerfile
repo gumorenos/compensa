@@ -8,6 +8,14 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# The Next standalone tracer intentionally keeps only dependencies it can infer from
+# server entrypoints. Some lazily loaded runtime libraries (notably the XLSX engine)
+# resolve their own transitive packages at runtime, so keep the lockfile-defined
+# production dependency graph available in the final image as well.
+FROM base AS prod-deps
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -33,6 +41,7 @@ RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 
