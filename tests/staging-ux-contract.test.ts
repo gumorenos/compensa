@@ -40,14 +40,19 @@ describe("staging UX regression contract", () => {
     expect(page).toContain("Encontrar una valoración");
   });
 
-  it("uses dedicated valuation navigation instead of form action spacing", async () => {
+  it("uses dedicated active valuation navigation instead of form action spacing", async () => {
     const layout = await source("app/valuations/[valuationId]/layout.tsx");
+    const tabs = await source("app/valuations/[valuationId]/valuation-tabs.tsx");
     const css = await source("app/valuation-navigation.css");
     expect(layout).toContain('className="valuation-context-nav"');
-    expect(layout).toContain('className="valuation-tabs"');
+    expect(layout).toContain("<ValuationTabs valuationId={valuationId} />");
     expect(layout).toContain('className="valuation-journey"');
     expect(layout).not.toContain('nav className="form-actions"');
+    expect(tabs).toContain("usePathname");
+    expect(tabs).toContain('aria-current={aiActive ? undefined : "page"}');
+    expect(tabs).toContain('aria-current={aiActive ? "page" : undefined}');
     expect(css).toContain(".valuation-tabs");
+    expect(css).toContain(".valuation-tab.active");
     expect(css).toContain(".valuation-back-link");
   });
 });
