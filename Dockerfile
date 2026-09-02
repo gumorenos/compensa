@@ -11,7 +11,7 @@ RUN npm ci
 # The Next standalone tracer intentionally keeps only dependencies it can infer from
 # server entrypoints. Some lazily loaded runtime libraries (notably the XLSX engine)
 # resolve their own transitive packages at runtime, so keep the lockfile-defined
-# production dependency graph available in the final image as well.
+# production dependency graph available in the final runtime bundle as well.
 FROM base AS prod-deps
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
@@ -30,6 +30,15 @@ RUN npm run build
 # long-running application image.
 FROM builder AS tools
 
+# Merge Next's standalone output with the complete production dependency graph in
+# an intermediate filesystem so the final runner receives one combined application
+# layer instead of retaining duplicated node_modules across multiple image layers.
+FROM base AS runtime-bundle
+COPY --from=builder /app/.next/standalone ./
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/migrations ./migrations
+
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -40,10 +49,7 @@ ENV PORT=3000
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
+COPY --from=runtime-bundle --chown=nextjs:nodejs /app ./
 
 USER nextjs
 EXPOSE 3000
