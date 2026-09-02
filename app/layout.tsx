@@ -4,6 +4,7 @@ import { AppNavLinks } from "./app-nav-links.js";
 import { SessionNav } from "./session-nav.js";
 import "./globals.css";
 import "./workflow.css";
+import "./valuation-navigation.css";
 import "./auth.css";
 
 export const metadata: Metadata = {
