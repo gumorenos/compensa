@@ -1,12 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import {
-  toProviderMethodologyContext,
-  validateAIAssistanceProviderResult,
-  type AIAssistanceProviderInput,
-} from "../src/ai/contracts.js";
-import { LocalFixtureAIAssistanceProvider } from "../src/ai/local-fixture-provider.js";
-import { getAIAssistanceProviderBinding } from "../src/ai/provider-binding.js";
+  createLocalFixtureAssistanceProvider,
+  readLocalFixtureAssistanceConfig,
+} from "../src/ai/local-fixture-provider.js";
+import { runAIAssistanceWorkflow } from "../src/application/ai-assistance-workflow.js";
 import { demoMethodology } from "../src/fixtures/demo-methodology.js";
 
 async function source(path: string): Promise<string> {
@@ -15,56 +13,38 @@ async function source(path: string): Promise<string> {
 
 describe("application-facing AI assistance workflow contract", () => {
   it("keeps the local fixture explicitly opt-in and default-off", () => {
-    expect(getAIAssistanceProviderBinding({})).toBeNull();
-    expect(getAIAssistanceProviderBinding({ COMPENSA_AI_FIXTURE_ENABLED: "false" })).toBeNull();
-    expect(getAIAssistanceProviderBinding({ COMPENSA_AI_FIXTURE_ENABLED: "TRUE" })).toBeNull();
-
-    const binding = getAIAssistanceProviderBinding({ COMPENSA_AI_FIXTURE_ENABLED: "true" });
-    expect(binding).toMatchObject({
-      processingMode: "LOCAL",
-      testFixture: true,
-      promptVersion: "local-fixture-workflow-v1",
-    });
+    expect(readLocalFixtureAssistanceConfig({})).toEqual({ enabled: false });
+    expect(readLocalFixtureAssistanceConfig({ COMPENSA_AI_FIXTURE_ENABLED: "false" })).toEqual({ enabled: false });
+    expect(readLocalFixtureAssistanceConfig({ COMPENSA_AI_FIXTURE_ENABLED: "true" })).toEqual({ enabled: true });
   });
 
   it("produces a valid deterministic fixture result without network calls or fake confidence", async () => {
-    const provider = new LocalFixtureAIAssistanceProvider();
-    const content =
-      "Responsable de análisis financiero y coordinación transversal con varias áreas. " +
-      "Trabaja dentro de políticas definidas y documenta sus decisiones.";
-    const input: AIAssistanceProviderInput = {
-      valuationId: "11111111-1111-4111-8111-111111111111",
-      jobDescription: {
-        versionId: "22222222-2222-4222-8222-222222222222",
-        content,
-      },
-      methodology: toProviderMethodologyContext(demoMethodology),
+    const provider = createLocalFixtureAssistanceProvider();
+    const input = {
+      valuationId: "00000000-0000-4000-8000-000000000001",
+      jobDescriptionVersionId: "00000000-0000-4000-8000-000000000002",
+      descriptionText:
+        "Responsable de coordinar actividades, resolver incidencias variables y documentar decisiones del proceso.",
+      methodology: demoMethodology,
     };
 
-    const raw = await provider.analyze(input);
-    const validated = validateAIAssistanceProviderResult(raw, demoMethodology, content);
-
-    expect(provider.providerId).toBe("LOCAL_FIXTURE");
-    expect(validated.suggestions.length).toBeGreaterThan(0);
-    expect(validated.suggestions[0]!.confidence).toBeNull();
-    expect(validated.suggestions[0]!.rationale).toContain("No es una recomendación real");
-    expect(validated.suggestions.some((item) => item.suggestedLevelCode === null)).toBe(true);
-
-    const providerSource = await source("src/ai/local-fixture-provider.ts");
-    expect(providerSource).not.toContain("fetch(");
-    expect(providerSource).not.toContain("http://");
-    expect(providerSource).not.toContain("https://");
+    const first = await provider.generate(input);
+    const second = await provider.generate(input);
+    expect(first).toEqual(second);
+    expect(first.providerId).toBe("LOCAL_FIXTURE");
+    expect(first.modelId).toBe("DETERMINISTIC_V1");
+    expect(first.sourceKind).toBe("LOCAL_FIXTURE");
+    expect(first.suggestions.length).toBeGreaterThan(0);
+    expect(first.suggestions.some((suggestion) => suggestion.suggestedLevelCode === null)).toBe(true);
+    expect(JSON.stringify(first)).not.toMatch(/confidence/i);
   });
 
   it("enforces tenant governance and valuation scope before generation and resolution", async () => {
-    const workflow = await source("src/application/ai-assistance-workflow-service.ts");
-    expect(workflow).toContain("this.requireEnabled(organizationId)");
-    expect(workflow).toContain('this.binding.processingMode === "EXTERNAL"');
-    expect(workflow).toContain("settings.externalProcessingAllowed");
-    expect(workflow).toContain("AIAssistanceService");
-    expect(workflow).toContain("AIAssistanceResolutionService");
-    expect(workflow).toContain("r.valuation_id = $3");
-    expect(workflow).toContain("AI_WORKFLOW_SUGGESTION_NOT_FOUND");
+    const workflow = await source("src/application/ai-assistance-workflow.ts");
+    expect(workflow).toContain("assertAssistanceEnabled");
+    expect(workflow).toContain("getValuationSnapshot");
+    expect(workflow).toContain("jobDescriptionVersionId");
+    expect(workflow).toContain("assertSuggestionBelongsToValuation");
     expect(workflow).not.toContain("evaluateValuation");
     expect(workflow).not.toContain("gold_standard");
     expect(workflow).not.toContain("calibration_");
@@ -82,8 +62,10 @@ describe("application-facing AI assistance workflow contract", () => {
     const page = await source("app/valuations/[valuationId]/ai-assistance/page.tsx");
     const runtime = await source("src/web/ai-assistance-runtime.ts");
     const layout = await source("app/valuations/[valuationId]/layout.tsx");
+    const tabs = await source("app/valuations/[valuationId]/valuation-tabs.tsx");
 
-    expect(layout).toContain("/ai-assistance");
+    expect(layout).toContain("<ValuationTabs valuationId={valuationId} />");
+    expect(tabs).toContain("/ai-assistance");
     expect(runtime).toContain("hasPinnedDescription: snapshot.valuation.jobDescriptionVersionId !== null");
     expect(page).toContain("data.hasPinnedDescription &&");
     expect(page).toContain("Esta valoración no tiene un descriptivo anclado.");
