@@ -31,8 +31,12 @@ export default async function AIAssistanceGovernancePage() {
 
       <section className="card card-pad stack">
         <div>
-          <span className="eyebrow">Tenant</span>
+          <span className="eyebrow">Organización</span>
           <h2 style={{ marginTop: 6 }}>Controles de asistencia</h2>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Estos permisos aplican únicamente a {data.organization.name}. No modifican la
+            configuración de otras organizaciones ni habilitan proveedores por sí solos.
+          </p>
         </div>
 
         <form action={updateAIGovernanceAction} className="stack compact-stack">
