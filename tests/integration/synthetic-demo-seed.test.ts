@@ -22,20 +22,25 @@ afterAll(async () => {
   await pool.end();
 });
 
+async function provisionSyntheticTestOrganization() {
+  const organization = await repository.createOrganization({
+    slug: "synthetic-seed-test",
+    name: "Synthetic Seed Test",
+    countryCode: "PE",
+    currencyCode: "PEN",
+  });
+  await repository.createMethodologyVersion({
+    organizationId: organization.id,
+    definition: demoMethodology,
+    contentOwner: "Synthetic test",
+    status: "ACTIVE",
+  });
+  return organization;
+}
+
 describe("synthetic demo seed", () => {
   it("creates realistic workflow states and Gold Standard references idempotently", async () => {
-    const organization = await repository.createOrganization({
-      slug: "synthetic-seed-test",
-      name: "Synthetic Seed Test",
-      countryCode: "PE",
-      currencyCode: "PEN",
-    });
-    await repository.createMethodologyVersion({
-      organizationId: organization.id,
-      definition: demoMethodology,
-      contentOwner: "Synthetic test",
-      status: "ACTIVE",
-    });
+    const organization = await provisionSyntheticTestOrganization();
 
     const first = await seedSyntheticDemoData(pool, organization.slug);
     const second = await seedSyntheticDemoData(pool, organization.slug);
@@ -94,5 +99,24 @@ describe("synthetic demo seed", () => {
       [organization.id],
     );
     expect(duplicateCodes.rows).toHaveLength(0);
+  });
+
+  it("refuses to overwrite a synthetic job changed during QA", async () => {
+    const organization = await provisionSyntheticTestOrganization();
+    await seedSyntheticDemoData(pool, organization.slug);
+    await pool.query(
+      "UPDATE jobs SET area = 'Área modificada durante QA' WHERE organization_id = $1 AND code = 'SYN-DEMO-COMP-AN'",
+      [organization.id],
+    );
+
+    await expect(seedSyntheticDemoData(pool, organization.slug)).rejects.toMatchObject({
+      code: "DEMO_JOB_COLLISION",
+    });
+
+    const row = await pool.query(
+      "SELECT area FROM jobs WHERE organization_id = $1 AND code = 'SYN-DEMO-COMP-AN'",
+      [organization.id],
+    );
+    expect(row.rows[0]?.area).toBe("Área modificada durante QA");
   });
 });
