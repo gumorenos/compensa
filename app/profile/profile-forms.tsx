@@ -26,7 +26,6 @@ export function ProfileForms({
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profilePending, setProfilePending] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordPending, setPasswordPending] = useState(false);
 
@@ -58,11 +57,9 @@ export function ProfileForms({
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPasswordError(null);
-    setPasswordMessage(null);
     setPasswordPending(true);
 
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
+    const form = new FormData(event.currentTarget);
     const currentPassword = String(form.get("currentPassword") ?? "");
     const newPassword = String(form.get("newPassword") ?? "");
     const confirmPassword = String(form.get("confirmPassword") ?? "");
@@ -94,11 +91,7 @@ export function ProfileForms({
       return;
     }
 
-    formElement.reset();
-    setPasswordMessage(
-      "Contraseña actualizada. Las demás sesiones activas de tu cuenta fueron cerradas.",
-    );
-    setPasswordPending(false);
+    window.location.assign("/sign-in?passwordChanged=1");
   }
 
   return (
@@ -157,7 +150,8 @@ export function ProfileForms({
           <span className="eyebrow">Seguridad</span>
           <h2 style={{ marginTop: 6 }}>Cambiar contraseña</h2>
           <p className="muted" style={{ marginBottom: 0 }}>
-            Debes ingresar tu contraseña actual. Al guardar, las demás sesiones activas se revocan.
+            Debes ingresar tu contraseña actual. Por seguridad, al guardar se cerrarán las sesiones
+            activas de tu cuenta y tendrás que ingresar nuevamente.
           </p>
         </div>
 
@@ -200,7 +194,6 @@ export function ProfileForms({
           </div>
 
           {passwordError !== null && <div className="notice notice-warning">{passwordError}</div>}
-          {passwordMessage !== null && <div className="notice">{passwordMessage}</div>}
 
           <div className="form-actions">
             <button type="submit" className="button" disabled={passwordPending}>
