@@ -13,7 +13,7 @@ The seed command requires all of the following:
 
 A production-like slug such as `compensa` or `compensa-prod` is rejected even if the confirmation value is supplied.
 
-The command does not create organizations, users, credentials, or methodologies. It is insert/resume-only for reserved `SYN-DEMO-*` job codes and `SYN-GS-*` Gold Standard case codes. If an existing reserved record no longer matches the expected synthetic definition, the command stops instead of overwriting it.
+The command does not create organizations, users, credentials, or methodologies. It creates or verifies only reserved `SYN-DEMO-*` job codes and `SYN-GS-*` Gold Standard case codes. If an existing reserved record no longer matches the expected synthetic definition, the command stops instead of overwriting it.
 
 ## Contents
 
@@ -31,6 +31,8 @@ Descriptions use source label `SYNTHETIC_DEMO_V1`. Gold Standard cases use the s
 
 The seed is idempotent when the generated records are unchanged. It intentionally refuses to overwrite manually edited synthetic fixtures; this prevents a QA helper from silently destroying test work.
 
+Workflow state receives the same protection. A fresh synthetic valuation may advance through the seed-defined transitions, and an interrupted seed-created submission may resume only when its review history still consists exclusively of the expected synthetic submission. If QA changed the workflow state or added a manual review action/comment, a rerun stops with `DEMO_STATUS_COLLISION` and preserves that manual state.
+
 ## Staging invocation
 
 After the normal bootstrap and migrations:
@@ -47,7 +49,7 @@ Expected summary:
 Synthetic demo ready for <organization>: 7 jobs, 7 valuations, 3 Gold Standard cases.
 ```
 
-Running the same command again without changing those records must return the same counts and create no duplicates.
+Running the same command again without changing those records must return the same counts and create no duplicates. A rerun is not a reset mechanism: if a synthetic fixture was changed during QA, fix it intentionally or restore a staging backup instead of forcing the seed to overwrite it.
 
 ## Production
 
