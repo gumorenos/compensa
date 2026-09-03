@@ -33,6 +33,12 @@
   font-size: 13px;
 }
 
+.session-profile-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 input[type="email"],
 input[type="password"] {
   width: 100%;
@@ -48,6 +54,31 @@ input[type="email"]:focus,
 input[type="password"]:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+input[readonly] {
+  background: var(--surface-muted);
+  color: var(--muted);
+  cursor: default;
+}
+
+.profile-grid {
+  align-items: start;
+}
+
+.profile-account-context {
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.profile-account-context strong {
+  color: var(--text);
 }
 
 @media (max-width: 560px) {
