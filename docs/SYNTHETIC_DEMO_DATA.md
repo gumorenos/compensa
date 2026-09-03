@@ -7,10 +7,13 @@ Compensa includes an **explicitly synthetic** dataset for staging/demo QA. It is
 The seed command requires all of the following:
 
 - an existing organization selected by `COMPENSA_ORG_SLUG`;
+- an organization slug explicitly marked `staging`, `demo`, `test` or `qa`;
 - the active fictional `DEMO_POINT_FACTOR` methodology already provisioned for that organization;
 - the exact confirmation `COMPENSA_DEMO_SEED_CONFIRM=SYNTHETIC_STAGING_DATA`.
 
-The command does not create organizations, users, credentials, or methodologies. It is insert/resume-only for reserved `SYN-DEMO-*` job codes and `SYN-GS-*` Gold Standard case codes. If an existing reserved record does not match the expected synthetic definition, the command stops instead of overwriting it.
+A production-like slug such as `compensa` or `compensa-prod` is rejected even if the confirmation value is supplied.
+
+The command does not create organizations, users, credentials, or methodologies. It is insert/resume-only for reserved `SYN-DEMO-*` job codes and `SYN-GS-*` Gold Standard case codes. If an existing reserved record no longer matches the expected synthetic definition, the command stops instead of overwriting it.
 
 ## Contents
 
@@ -48,4 +51,4 @@ Running the same command again without changing those records must return the sa
 
 ## Production
 
-Do not run the demo seed in a production tenant. The explicit confirmation is a guardrail, not a substitute for deployment policy and environment separation.
+The code rejects organization slugs that are not explicitly marked as staging/demo/test/qa. Do not bypass that boundary or copy synthetic records into a production tenant.
