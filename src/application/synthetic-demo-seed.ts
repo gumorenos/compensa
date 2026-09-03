@@ -58,6 +58,7 @@ export async function seedSyntheticDemoData(
       methodologyVersionId,
     );
     await ensureDecisions(repository, valuationService, organizationId, valuation, definition);
+    await assertSafeWorkflowContinuation(pool, organizationId, valuation, definition);
     const finalValuation = await advanceValuation(valuationService, organizationId, valuation.id, definition);
     if (definition.goldStandard !== undefined) {
       await ensureGoldStandard(pool, goldService, organizationId, finalValuation, definition);
@@ -209,6 +210,46 @@ async function ensureDecisions(
       justification: expected,
     });
   }
+}
+
+async function assertSafeWorkflowContinuation(
+  pool: Pool,
+  organizationId: string,
+  valuation: Valuation,
+  definition: SyntheticDemoJob,
+): Promise<void> {
+  const expectedStatus = expectedPersistentStatus(definition);
+  if (valuation.status === expectedStatus) return;
+
+  const history = await pool.query(
+    `SELECT action, comment
+     FROM valuation_review_actions
+     WHERE organization_id = $1 AND valuation_id = $2
+     ORDER BY created_at, id`,
+    [organizationId, valuation.id],
+  );
+
+  if (valuation.status === "DRAFT" && history.rows.length === 0) return;
+
+  const canResumeSyntheticSubmission =
+    valuation.status === "IN_REVIEW" &&
+    (definition.targetStatus === "RETURNED" || definition.targetStatus === "APPROVED") &&
+    history.rows.length === 1 &&
+    history.rows[0]?.action === "SUBMITTED" &&
+    history.rows[0]?.comment === "Synthetic QA submission";
+  if (canResumeSyntheticSubmission) return;
+
+  throw new PersistenceError(
+    "DEMO_STATUS_COLLISION",
+    `${definition.code} expected ${expectedStatus}, found ${valuation.status}; manual workflow state is preserved.`,
+  );
+}
+
+function expectedPersistentStatus(definition: SyntheticDemoJob): Valuation["status"] {
+  if (definition.targetStatus === "DRAFT_INCOMPLETE" || definition.targetStatus === "DRAFT_COMPLETE") {
+    return "DRAFT";
+  }
+  return definition.targetStatus;
 }
 
 async function advanceValuation(
