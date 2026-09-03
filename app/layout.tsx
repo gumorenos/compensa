@@ -6,6 +6,7 @@ import "./globals.css";
 import "./workflow.css";
 import "./valuation-navigation.css";
 import "./auth.css";
+import "./profile/profile.css";
 
 export const metadata: Metadata = {
   title: "Compensa",
