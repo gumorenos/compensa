@@ -12,7 +12,8 @@
   font-size: 36px;
 }
 
-.auth-card .notice {
+.auth-card .notice,
+.profile-grid .notice {
   margin: 0;
 }
 
