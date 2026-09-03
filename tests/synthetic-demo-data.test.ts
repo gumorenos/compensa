@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { assertSyntheticDemoSeedConfirmation } from "../src/application/synthetic-demo-seed-guard.js";
+import {
+  assertSyntheticDemoOrganizationSlug,
+  assertSyntheticDemoSeedConfirmation,
+} from "../src/application/synthetic-demo-seed-guard.js";
 import { evaluateValuation } from "../src/domain/scoring-engine.js";
 import { demoMethodology } from "../src/fixtures/demo-methodology.js";
 import {
@@ -14,6 +17,14 @@ describe("synthetic demo data", () => {
     expect(() => assertSyntheticDemoSeedConfirmation("true")).toThrow(/SYNTHETIC_STAGING_DATA/);
     expect(() => assertSyntheticDemoSeedConfirmation("SYNTHETIC_STAGING_DATA")).not.toThrow();
     expect(() => assertSyntheticDemoSeedConfirmation(" SYNTHETIC_STAGING_DATA ")).not.toThrow();
+  });
+
+  it("rejects production-like organization slugs", () => {
+    expect(() => assertSyntheticDemoOrganizationSlug("compensa")).toThrow(/staging, demo, test, or qa/);
+    expect(() => assertSyntheticDemoOrganizationSlug("compensa-prod")).toThrow(/staging, demo, test, or qa/);
+    expect(() => assertSyntheticDemoOrganizationSlug("compensa-staging")).not.toThrow();
+    expect(() => assertSyntheticDemoOrganizationSlug("client-demo-pe")).not.toThrow();
+    expect(() => assertSyntheticDemoOrganizationSlug("qa_client")).not.toThrow();
   });
 
   it("uses reserved, unique and visibly synthetic identifiers", () => {
