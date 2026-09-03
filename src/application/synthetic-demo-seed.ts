@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { GoldStandardService } from "./gold-standard-service.js";
+import { assertSyntheticDemoOrganizationSlug } from "./synthetic-demo-seed-guard.js";
 import { ValuationService } from "./valuation-service.js";
 import { demoMethodology } from "../fixtures/demo-methodology.js";
 import {
@@ -21,6 +22,7 @@ export async function seedSyntheticDemoData(
   pool: Pool,
   organizationSlug: string,
 ): Promise<SyntheticDemoSeedResult> {
+  assertSyntheticDemoOrganizationSlug(organizationSlug);
   const orgResult = await pool.query("SELECT id FROM organizations WHERE slug = $1", [organizationSlug]);
   const organizationId = orgResult.rows[0]?.id as string | undefined;
   if (organizationId === undefined) {
@@ -87,15 +89,26 @@ async function ensureJob(
   definition: SyntheticDemoJob,
 ): Promise<string> {
   const existing = await pool.query(
-    "SELECT id, name FROM jobs WHERE organization_id = $1 AND code = $2",
+    "SELECT id FROM jobs WHERE organization_id = $1 AND code = $2",
     [organizationId, definition.code],
   );
-  const row = existing.rows[0] as { id: string; name: string } | undefined;
-  if (row !== undefined) {
-    if (row.name !== definition.name) {
-      throw new PersistenceError("DEMO_JOB_COLLISION", `Job code ${definition.code} already exists with another name.`);
+  const jobId = existing.rows[0]?.id as string | undefined;
+  if (jobId !== undefined) {
+    const job = await repository.getJob(organizationId, jobId);
+    if (
+      job === null ||
+      job.name !== definition.name ||
+      job.department !== definition.department ||
+      job.area !== definition.area ||
+      job.jobFamily !== definition.jobFamily ||
+      job.status !== "ACTIVE"
+    ) {
+      throw new PersistenceError(
+        "DEMO_JOB_COLLISION",
+        `Job code ${definition.code} exists but no longer matches the synthetic fixture.`,
+      );
     }
-    return row.id;
+    return jobId;
   }
   const job = await repository.createJob(organizationId, {
     code: definition.code,
@@ -204,7 +217,7 @@ async function advanceValuation(
   valuationId: string,
   definition: SyntheticDemoJob,
 ): Promise<Valuation> {
-  let snapshot = await service.getSnapshot(organizationId, valuationId);
+  const snapshot = await service.getSnapshot(organizationId, valuationId);
   if (snapshot === null) throw new PersistenceError("DEMO_VALUATION_MISSING", "Synthetic valuation disappeared.");
   let current = snapshot.valuation;
 
