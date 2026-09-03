@@ -97,6 +97,23 @@ services:
     networks:
       - backend
 
+  demo-seed:
+    profiles: ["demo"]
+    build:
+      context: .
+      target: tools
+    image: compensa-staging-tools:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      COMPENSA_ORG_SLUG: ${COMPENSA_ORG_SLUG:-compensa-staging}
+      COMPENSA_DEMO_SEED_ENABLED: "true"
+    command: ["npm", "run", "seed:staging-demo"]
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
