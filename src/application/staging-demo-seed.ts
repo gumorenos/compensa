@@ -285,21 +285,25 @@ async function advanceTowardTarget(
     return valuation;
   }
 
-  let current = valuation;
-  if (
-    (profile.targetStatus === "IN_REVIEW" ||
-      profile.targetStatus === "RETURNED" ||
-      profile.targetStatus === "APPROVED") &&
-    (current.status === "DRAFT" || current.status === "RETURNED")
-  ) {
-    current = await service.submitForReview(
+  if (profile.targetStatus === "IN_REVIEW") {
+    if (valuation.status !== "DRAFT") return valuation;
+    return service.submitForReview(
       organizationId,
-      current.id,
+      valuation.id,
       `Transición sintética para QA (${profile.code}).`,
     );
   }
 
-  if (profile.targetStatus === "RETURNED" && current.status === "IN_REVIEW") {
+  if (profile.targetStatus === "RETURNED") {
+    let current = valuation;
+    if (current.status === "DRAFT") {
+      current = await service.submitForReview(
+        organizationId,
+        current.id,
+        `Transición sintética para QA (${profile.code}).`,
+      );
+    }
+    if (current.status !== "IN_REVIEW") return current;
     return service.returnForChanges(
       organizationId,
       current.id,
@@ -307,15 +311,20 @@ async function advanceTowardTarget(
     );
   }
 
-  if (profile.targetStatus === "APPROVED" && current.status === "IN_REVIEW") {
-    return service.approve(
+  let current = valuation;
+  if (current.status === "DRAFT") {
+    current = await service.submitForReview(
       organizationId,
       current.id,
-      `Aprobación sintética para QA (${profile.code}).`,
+      `Transición sintética para QA (${profile.code}).`,
     );
   }
-
-  return current;
+  if (current.status !== "IN_REVIEW") return current;
+  return service.approve(
+    organizationId,
+    current.id,
+    `Aprobación sintética para QA (${profile.code}).`,
+  );
 }
 
 async function requireValuation(
