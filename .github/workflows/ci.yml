@@ -46,13 +46,21 @@ jobs:
         run: npm run test:integration
       - name: Verify migration-only command
         run: npm run db:migrate
+      - name: Verify synthetic demo seed opt-in guard
+        shell: bash
+        run: |
+          if npm run seed:staging-demo >/tmp/compensa-demo-seed-guard.log 2>&1; then
+            echo "Synthetic demo seed ran without explicit opt-in." >&2
+            exit 1
+          fi
+          grep -q "Synthetic staging seed is disabled" /tmp/compensa-demo-seed-guard.log
       - name: Validate staging Compose file
         env:
           POSTGRES_PASSWORD: compensa
           COMPENSA_ADMIN_EMAIL: admin@example.com
           COMPENSA_ADMIN_PASSWORD: ci-only-admin-password
         run: >-
-          docker compose -f compose.staging.yml --profile ops config >/dev/null
+          docker compose -f compose.staging.yml --profile ops --profile demo config >/dev/null
       - name: Build staging image
         run: docker build --target runner -t compensa-ci:latest .
       - name: Generate XLSX inside standalone image
