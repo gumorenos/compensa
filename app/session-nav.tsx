@@ -10,7 +10,8 @@ export function SessionNav() {
   return (
     <div className="session-nav">
       <Link href="/profile" className="session-user session-profile-link" title="Abrir mi perfil">
-        {session.user.name}
+        <span className="session-user-name">{session.user.name}</span>
+        <span className="session-profile-mobile">Perfil</span>
       </Link>
       <button
         type="button"
