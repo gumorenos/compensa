@@ -1,4 +1,7 @@
-import { assertSyntheticDemoSeedConfirmation } from "../src/application/synthetic-demo-seed-guard.js";
+import {
+  assertSyntheticDemoOrganizationSlug,
+  assertSyntheticDemoSeedConfirmation,
+} from "../src/application/synthetic-demo-seed-guard.js";
 import { seedSyntheticDemoData } from "../src/application/synthetic-demo-seed.js";
 import { createPool, runMigrations } from "../src/persistence/database.js";
 
@@ -11,6 +14,7 @@ function required(name: string): string {
 assertSyntheticDemoSeedConfirmation(process.env.COMPENSA_DEMO_SEED_CONFIRM);
 const databaseUrl = required("DATABASE_URL");
 const organizationSlug = required("COMPENSA_ORG_SLUG");
+assertSyntheticDemoOrganizationSlug(organizationSlug);
 const pool = createPool(databaseUrl);
 
 try {
