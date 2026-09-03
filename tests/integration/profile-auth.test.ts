@@ -68,7 +68,7 @@ describe("self-service profile authentication", () => {
     });
   });
 
-  it("rotates the password and revokes another active session", async () => {
+  it("rotates the password and revokes all previously active sessions", async () => {
     const signup = await auth.api.signUpEmail({
       returnHeaders: true,
       body: {
@@ -84,6 +84,7 @@ describe("self-service profile authentication", () => {
       body: { email: "password@example.com", password: originalPassword },
     });
     const secondaryCookie = cookieFrom(secondLogin.headers);
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: primaryCookie }) })).not.toBeNull();
     expect(await auth.api.getSession({ headers: new Headers({ cookie: secondaryCookie }) })).not.toBeNull();
 
     await auth.api.changePassword({
@@ -95,7 +96,7 @@ describe("self-service profile authentication", () => {
       },
     });
 
-    expect(await auth.api.getSession({ headers: new Headers({ cookie: primaryCookie }) })).not.toBeNull();
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: primaryCookie }) })).toBeNull();
     expect(await auth.api.getSession({ headers: new Headers({ cookie: secondaryCookie }) })).toBeNull();
 
     await expect(
