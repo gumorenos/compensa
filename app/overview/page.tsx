@@ -41,37 +41,37 @@ export default async function OperationalOverviewPage() {
     {
       label: "Puestos activos",
       value: metrics.activeJobs,
-      detail: "Puestos activos registrados en la organización.",
+      detail: "Base disponible para descriptivos y nuevas valoraciones.",
       href: "/",
     },
     {
       label: "Borradores",
       value: metrics.statusCounts.DRAFT,
-      detail: "Valoraciones DRAFT, completas o incompletas.",
+      detail: "Trabajo editable todavía no enviado a revisión.",
       href: "/valuations?status=DRAFT",
     },
     {
       label: "En revisión",
       value: metrics.statusCounts.IN_REVIEW,
-      detail: "Valoraciones enviadas y pendientes de decisión del revisor.",
+      detail: "Procesos esperando aprobación o devolución del revisor.",
       href: "/valuations?status=IN_REVIEW",
     },
     {
       label: "Devueltas",
       value: metrics.statusCounts.RETURNED,
-      detail: "Valoraciones devueltas al evaluador para corrección.",
+      detail: "Valoraciones que requieren correcciones del evaluador.",
       href: "/valuations?status=RETURNED",
     },
     {
       label: "Aprobadas",
       value: metrics.statusCounts.APPROVED,
-      detail: "Valoraciones oficiales actualmente en estado APPROVED.",
+      detail: "Resultados cerrados e inmutables de la organización.",
       href: "/valuations?status=APPROVED",
     },
     {
-      label: "Sin valoración aprobada",
+      label: "Sin aprobación",
       value: metrics.jobsWithoutApprovedValuation,
-      detail: "Puestos activos que hoy no tienen ninguna valoración APPROVED.",
+      detail: "Puestos activos sin una valoración APPROVED vigente.",
       href: "/",
     },
   ] as const;
@@ -80,29 +80,63 @@ export default async function OperationalOverviewPage() {
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">{data.context.organization.name} · vista operativa</span>
+          <span className="eyebrow">{data.context.organization.name} · trabajo de valoración</span>
           <h1>Inicio</h1>
           <p className="muted">
-            Estado actual del trabajo de valoración. Son conteos descriptivos del tenant, no un score de madurez ni un veredicto automático.
+            Revisa qué necesita atención y continúa el flujo desde la preparación del puesto hasta
+            la aprobación. Los indicadores son conteos operativos del tenant, no un score de madurez.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link className="button button-secondary" href="/">Ver puestos</Link>
-          <Link className="button" href="/valuations">Abrir valoraciones</Link>
+          <Link className="button" href="/valuations">Abrir bandeja de valoraciones</Link>
         </div>
       </div>
 
-      <section className="grid grid-3" style={{ marginBottom: 28 }}>
+      <section aria-labelledby="workflow-title" style={{ marginBottom: 28 }}>
+        <div className="section-head" style={{ marginBottom: 12 }}>
+          <div>
+            <span className="eyebrow">Flujo de trabajo</span>
+            <h2 id="workflow-title" style={{ marginTop: 6 }}>Cómo avanza una valoración</h2>
+          </div>
+        </div>
+        <div className="workflow-strip">
+          <div className="workflow-step">
+            <span className="workflow-step-number">1</span>
+            <strong>Preparar puesto</strong>
+            <span>Registra el puesto y fija el descriptivo que servirá como referencia.</span>
+          </div>
+          <div className="workflow-step">
+            <span className="workflow-step-number">2</span>
+            <strong>Valorar</strong>
+            <span>Selecciona niveles y documenta el fundamento de cada decisión requerida.</span>
+          </div>
+          <div className="workflow-step">
+            <span className="workflow-step-number">3</span>
+            <strong>Revisar</strong>
+            <span>El revisor valida la valoración completa y puede aprobarla o devolverla.</span>
+          </div>
+          <div className="workflow-step">
+            <span className="workflow-step-number">4</span>
+            <strong>Aprobar</strong>
+            <span>La versión aprobada queda cerrada, trazable y disponible para comparación.</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-3" style={{ marginBottom: 28 }} aria-label="Resumen operativo">
         {cards.map((card) => (
           <Link
             key={card.label}
             href={card.href}
-            className="card card-pad"
+            className="card card-pad status-card"
             style={{ textDecoration: "none", color: "inherit" }}
           >
             <span className="eyebrow">{card.label}</span>
-            <div style={{ fontSize: "2rem", fontWeight: 750, marginTop: 10 }}>{card.value}</div>
-            <p className="muted" style={{ marginBottom: 0 }}>{card.detail}</p>
+            <div className="status-card-count">
+              <strong>{card.value}</strong>
+              <span>{card.detail}</span>
+            </div>
           </Link>
         ))}
       </section>
@@ -118,7 +152,8 @@ export default async function OperationalOverviewPage() {
           </span>
         </div>
         <p className="muted" style={{ marginBottom: 14 }}>
-          DRAFT o RETURNED sin resultado calculado. Esto significa que faltan decisiones necesarias para puntuar; no implica por sí solo que el descriptivo sea insuficiente.
+          Borradores o devoluciones sin resultado calculado porque todavía faltan decisiones
+          requeridas. No implica por sí solo que el descriptivo sea insuficiente.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link className="button button-small button-secondary" href="/valuations?status=DRAFT">Revisar borradores</Link>

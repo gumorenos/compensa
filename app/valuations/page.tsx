@@ -22,6 +22,15 @@ const statusLabels: Record<ValuationQueueStatus, string> = {
   CANCELLED: "Cancelada",
 };
 
+const statusHelp: Record<ValuationQueueStatus, string> = {
+  DRAFT: "En edición",
+  IN_REVIEW: "Requiere revisión",
+  RETURNED: "Requiere corrección",
+  APPROVED: "Cerrada",
+  SUPERSEDED: "Histórica",
+  CANCELLED: "Sin continuar",
+};
+
 function statusBadge(status: ValuationQueueStatus) {
   if (status === "APPROVED") return "badge badge-success";
   if (status === "DRAFT" || status === "IN_REVIEW" || status === "RETURNED") {
@@ -50,16 +59,17 @@ export default async function ValuationQueuePage({ searchParams }: ValuationQueu
     <>
       <div className="page-head">
         <div>
-          <span className="eyebrow">{data.context.organization.name} · flujo operativo</span>
+          <span className="eyebrow">{data.context.organization.name} · bandeja operativa</span>
           <h1>Valoraciones</h1>
           <p className="muted">
-            Localiza procesos por estado, puesto, estructura, metodología, iniciador y fecha. La bandeja es de consulta; cada valoración conserva su workflow y permisos propios.
+            Continúa el trabajo pendiente o consulta valoraciones cerradas. Cada proceso conserva
+            su metodología, descriptivo anclado, decisiones, evidencia y permisos propios.
           </p>
         </div>
       </div>
 
       {data.invalidFilter !== null && (
-        <div className="notice" style={{ marginBottom: 24 }}>
+        <div className="notice notice-warning" style={{ marginBottom: 24 }}>
           <strong>Filtro inválido.</strong>
           <span>
             Se ignoraron los filtros manipulados o malformados. Campo: <code>{data.invalidFilter}</code>.
@@ -67,29 +77,38 @@ export default async function ValuationQueuePage({ searchParams }: ValuationQueu
         </div>
       )}
 
-      <section className="grid grid-3" style={{ marginBottom: 28 }}>
-        {valuationStatuses.map((status) => (
-          <Link
-            key={status}
-            href={`/valuations?status=${encodeURIComponent(status)}`}
-            className="card card-pad"
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <span className={statusBadge(status)}>{statusLabels[status]}</span>
-            <div style={{ fontSize: "2rem", fontWeight: 750, marginTop: 12 }}>
-              {queue.statusCounts[status]}
-            </div>
-          </Link>
-        ))}
+      <section aria-labelledby="status-summary-title" style={{ marginBottom: 28 }}>
+        <div className="section-head" style={{ marginBottom: 12 }}>
+          <div>
+            <span className="eyebrow">Estado del trabajo</span>
+            <h2 id="status-summary-title" style={{ marginTop: 6 }}>Ir directo a una etapa</h2>
+          </div>
+        </div>
+        <div className="grid grid-3">
+          {valuationStatuses.map((status) => (
+            <Link
+              key={status}
+              href={`/valuations?status=${encodeURIComponent(status)}`}
+              className="card card-pad status-card"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <span className={statusBadge(status)}>{statusLabels[status]}</span>
+              <div className="status-card-count">
+                <strong>{queue.statusCounts[status]}</strong>
+                <span>{statusHelp[status]}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="card card-pad" style={{ marginBottom: 28 }}>
         <div className="section-head" style={{ marginBottom: 18 }}>
           <div>
             <span className="eyebrow">Filtros</span>
-            <h2 style={{ marginTop: 6 }}>Bandeja operativa</h2>
+            <h2 style={{ marginTop: 6 }}>Encontrar una valoración</h2>
           </div>
-          <Link className="button button-secondary button-small" href="/valuations">Limpiar</Link>
+          <Link className="button button-secondary button-small" href="/valuations">Limpiar filtros</Link>
         </div>
 
         <form method="get" action="/valuations" className="stack">

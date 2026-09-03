@@ -82,8 +82,10 @@ describe("application-facing AI assistance workflow contract", () => {
     const page = await source("app/valuations/[valuationId]/ai-assistance/page.tsx");
     const runtime = await source("src/web/ai-assistance-runtime.ts");
     const layout = await source("app/valuations/[valuationId]/layout.tsx");
+    const tabs = await source("app/valuations/[valuationId]/valuation-tabs.tsx");
 
-    expect(layout).toContain("/ai-assistance");
+    expect(layout).toContain("<ValuationTabs valuationId={valuationId} />");
+    expect(tabs).toContain("/ai-assistance");
     expect(runtime).toContain("hasPinnedDescription: snapshot.valuation.jobDescriptionVersionId !== null");
     expect(page).toContain("data.hasPinnedDescription &&");
     expect(page).toContain("Esta valoración no tiene un descriptivo anclado.");
