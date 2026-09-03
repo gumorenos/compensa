@@ -14,6 +14,7 @@ describe("user profile UI contract", () => {
     expect(page).toContain("email={access.user.email}");
     expect(page).toContain("organizationName={access.organization.name}");
     expect(page).toContain("role={access.role}");
+    expect(page).toContain("<ProfileSessions />");
   });
 
   it("uses Better Auth self-service APIs and does not offer an unsafe email mutation", async () => {
@@ -46,5 +47,16 @@ describe("user profile UI contract", () => {
     expect(css).toContain(".session-profile-mobile");
     expect(css).toContain("display: inline;");
     expect(css).not.toMatch(/\.session-user\s*\{[^}]*display:\s*none/s);
+  });
+
+  it("lists and revokes sessions without rendering session tokens", async () => {
+    const sessions = await source("app/profile/profile-sessions.tsx");
+    expect(sessions).toContain("authClient.listSessions()");
+    expect(sessions).toContain("authClient.revokeSession({ token })");
+    expect(sessions).toContain("authClient.revokeOtherSessions()");
+    expect(sessions).toContain("Esta sesión");
+    expect(sessions).toContain("Cerrar otras sesiones");
+    expect(sessions).not.toContain("{session.token}");
+    expect(sessions).not.toContain("Token:");
   });
 });
