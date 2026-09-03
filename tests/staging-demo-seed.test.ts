@@ -44,7 +44,8 @@ describe("synthetic staging demo fixture", () => {
       result: evaluateValuation(demoMethodology, profile.selections),
     }));
 
-    expect(results[0]!.result.status).toBe("VALIDATION_ERROR");
+    expect(results[0]!.result.status).toBe("ERROR");
+    expect(results[0]!.result.errors.every((error) => error.code === "MISSING_REQUIRED_SELECTION")).toBe(true);
     const grades = results.slice(1).map(({ result }) =>
       result.status === "SUCCESS" ? result.grade?.code : null,
     );
