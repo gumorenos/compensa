@@ -41,6 +41,13 @@ export function createCompensaAuth(options: CompensaAuthOptions = {}) {
         createdAt: "created_at",
         updatedAt: "updated_at",
       },
+      changeEmail: {
+        enabled: true,
+        // Until Compensa has transactional email delivery, Better Auth may only
+        // update an address immediately when the current address is unverified.
+        // Verified accounts are additionally blocked by the profile server action.
+        updateEmailWithoutVerification: true,
+      },
     },
     session: {
       modelName: "auth_sessions",
