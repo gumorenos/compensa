@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedSyntheticDemoData } from "../../src/application/synthetic-demo-seed.js";
+import { ValuationService } from "../../src/application/valuation-service.js";
 import { demoMethodology } from "../../src/fixtures/demo-methodology.js";
 import { SYNTHETIC_DEMO_MARKER } from "../../src/fixtures/synthetic-demo-data.js";
 import { CompensaRepository, createPool, runMigrations } from "../../src/persistence/database.js";
@@ -9,6 +10,7 @@ if (!databaseUrl) throw new Error("DATABASE_URL is required for synthetic demo i
 
 const pool = createPool(databaseUrl);
 const repository = new CompensaRepository(pool);
+const valuationService = new ValuationService(repository);
 
 beforeAll(async () => {
   await runMigrations(pool);
@@ -118,5 +120,35 @@ describe("synthetic demo seed", () => {
       [organization.id],
     );
     expect(row.rows[0]?.area).toBe("Área modificada durante QA");
+  });
+
+  it("preserves a manual workflow status change instead of advancing it again", async () => {
+    const organization = await provisionSyntheticTestOrganization();
+    await seedSyntheticDemoData(pool, organization.slug);
+
+    const candidate = await pool.query(
+      `SELECT v.id
+       FROM valuations v JOIN jobs j ON j.id = v.job_id
+       WHERE v.organization_id = $1 AND v.status = 'IN_REVIEW' AND j.code LIKE 'SYN-DEMO-%'
+       LIMIT 1`,
+      [organization.id],
+    );
+    const valuationId = candidate.rows[0]?.id as string | undefined;
+    if (valuationId === undefined) throw new Error("Expected synthetic IN_REVIEW valuation.");
+
+    await valuationService.returnForChanges(
+      organization.id,
+      valuationId,
+      "Cambio manual deliberado durante QA.",
+    );
+
+    await expect(seedSyntheticDemoData(pool, organization.slug)).rejects.toMatchObject({
+      code: "DEMO_STATUS_COLLISION",
+    });
+
+    const valuation = await repository.getValuation(organization.id, valuationId);
+    expect(valuation?.status).toBe("RETURNED");
+    const history = await repository.listReviewActions(organization.id, valuationId);
+    expect(history.at(-1)?.comment).toBe("Cambio manual deliberado durante QA.");
   });
 });
