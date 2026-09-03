@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { authClient } from "../src/auth/client.js";
 
 export function SessionNav() {
@@ -8,7 +9,10 @@ export function SessionNav() {
 
   return (
     <div className="session-nav">
-      <span className="session-user">{session.user.name}</span>
+      <Link href="/profile" className="session-user session-profile-link" title="Abrir mi perfil">
+        <span className="session-user-name">{session.user.name}</span>
+        <span className="session-profile-mobile">Perfil</span>
+      </Link>
       <button
         type="button"
         className="text-button"
