@@ -5,10 +5,12 @@ import { useFormStatus } from "react-dom";
 import {
   changeProfileEmailAction,
   changeProfilePasswordAction,
-  initialProfileActionState,
   updateProfileNameAction,
-  type ProfileActionState,
 } from "../../src/web/profile-actions.js";
+import {
+  initialProfileActionState,
+  type ProfileActionState,
+} from "../../src/web/profile-state.js";
 
 function SubmitButton({ children }: Readonly<{ children: React.ReactNode }>) {
   const { pending } = useFormStatus();
