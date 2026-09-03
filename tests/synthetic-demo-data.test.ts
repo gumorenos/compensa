@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { assertSyntheticDemoSeedConfirmation } from "../src/application/synthetic-demo-seed-guard.js";
 import { evaluateValuation } from "../src/domain/scoring-engine.js";
 import { demoMethodology } from "../src/fixtures/demo-methodology.js";
 import {
@@ -8,6 +9,13 @@ import {
 } from "../src/fixtures/synthetic-demo-data.js";
 
 describe("synthetic demo data", () => {
+  it("requires the exact explicit seed confirmation", () => {
+    expect(() => assertSyntheticDemoSeedConfirmation(undefined)).toThrow(/COMPENSA_DEMO_SEED_CONFIRM/);
+    expect(() => assertSyntheticDemoSeedConfirmation("true")).toThrow(/SYNTHETIC_STAGING_DATA/);
+    expect(() => assertSyntheticDemoSeedConfirmation("SYNTHETIC_STAGING_DATA")).not.toThrow();
+    expect(() => assertSyntheticDemoSeedConfirmation(" SYNTHETIC_STAGING_DATA ")).not.toThrow();
+  });
+
   it("uses reserved, unique and visibly synthetic identifiers", () => {
     expect(SYNTHETIC_DEMO_CONFIRMATION).toBe("SYNTHETIC_STAGING_DATA");
     expect(SYNTHETIC_DEMO_MARKER).toBe("SYNTHETIC_DEMO_V1");
