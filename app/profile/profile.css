@@ -1,0 +1,144 @@
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.profile-card {
+  min-width: 0;
+}
+
+.profile-card-wide {
+  grid-column: 1 / -1;
+}
+
+.profile-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.profile-section-head h2 {
+  margin-top: 6px;
+}
+
+.profile-form {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-form input[type="email"],
+.profile-form input[type="password"] {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--text);
+  outline: none;
+}
+
+.profile-form input[type="email"]:focus,
+.profile-form input[type="password"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.profile-form .form-actions {
+  margin-top: 0;
+}
+
+.profile-form button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.profile-feedback {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.profile-feedback-success {
+  background: #e5f3eb;
+  color: var(--success);
+}
+
+.profile-feedback-error {
+  background: #fae9e7;
+  color: #8a342e;
+}
+
+.profile-current-value {
+  margin: 0 0 18px;
+}
+
+.profile-current-value dt {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.profile-current-value dd {
+  margin: 0;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.profile-notice {
+  border: 1px solid #ead8b9;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff9ef;
+}
+
+.profile-notice strong {
+  display: block;
+  color: var(--warning);
+  font-size: 14px;
+}
+
+.profile-notice p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.profile-password-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.profile-form-footer {
+  grid-column: 1 / -1;
+}
+
+.profile-security-note {
+  margin: 0;
+  font-size: 13px;
+}
+
+.session-profile-link {
+  font-weight: 700;
+}
+
+.session-profile-link:hover {
+  color: var(--primary);
+}
+
+@media (max-width: 800px) {
+  .profile-grid,
+  .profile-password-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card-wide,
+  .profile-form-footer {
+    grid-column: auto;
+  }
+}
