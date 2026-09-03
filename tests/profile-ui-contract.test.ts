@@ -21,10 +21,18 @@ describe("user profile UI contract", () => {
     expect(form).toContain("authClient.updateUser({ name })");
     expect(form).toContain("authClient.changePassword({");
     expect(form).toContain("revokeOtherSessions: true");
+    expect(form).toContain('window.location.assign("/sign-in?passwordChanged=1")');
     expect(form).toContain('value={email} readOnly');
     expect(form).not.toContain("changeEmail(");
     expect(form).not.toMatch(/UPDATE\s+auth_users/i);
     expect(form).not.toMatch(/auth_accounts/i);
+  });
+
+  it("shows a narrow confirmation after a successful password rotation", async () => {
+    const signIn = await source("app/sign-in/page.tsx");
+    expect(signIn).toContain('passwordChanged === "1"');
+    expect(signIn).toContain("Contraseña actualizada. Ingresa nuevamente con tu nueva contraseña.");
+    expect(signIn).not.toContain("searchParams.passwordChanged");
   });
 
   it("makes the authenticated user's name the entry point to profile", async () => {
