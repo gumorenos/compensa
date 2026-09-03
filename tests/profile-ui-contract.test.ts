@@ -35,10 +35,16 @@ describe("user profile UI contract", () => {
     expect(signIn).not.toContain("searchParams.passwordChanged");
   });
 
-  it("makes the authenticated user's name the entry point to profile", async () => {
+  it("keeps profile navigation available on desktop and mobile", async () => {
     const nav = await source("app/session-nav.tsx");
+    const css = await source("app/auth.css");
     expect(nav).toContain('href="/profile"');
+    expect(nav).toContain("session-user-name");
+    expect(nav).toContain("session-profile-mobile");
     expect(nav).toContain("session.user.name");
     expect(nav).toContain("authClient.signOut()");
+    expect(css).toContain(".session-profile-mobile");
+    expect(css).toContain("display: inline;");
+    expect(css).not.toMatch(/\.session-user\s*\{[^}]*display:\s*none/s);
   });
 });
