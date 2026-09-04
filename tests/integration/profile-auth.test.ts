@@ -138,4 +138,57 @@ describe("self-service profile authentication", () => {
     });
     expect(login.user.email).toBe("wrong-current@example.com");
   });
+
+  it("lists sessions, revokes one other session and can revoke all remaining other sessions", async () => {
+    const signup = await auth.api.signUpEmail({
+      returnHeaders: true,
+      body: {
+        name: "Session User",
+        email: "sessions@example.com",
+        password: originalPassword,
+      },
+    });
+    const primaryCookie = cookieFrom(signup.headers);
+
+    const secondLogin = await auth.api.signInEmail({
+      returnHeaders: true,
+      body: { email: "sessions@example.com", password: originalPassword },
+    });
+    const secondaryCookie = cookieFrom(secondLogin.headers);
+    const secondarySession = await auth.api.getSession({
+      headers: new Headers({ cookie: secondaryCookie }),
+    });
+    expect(secondarySession).not.toBeNull();
+
+    const listed = await auth.api.listSessions({
+      headers: new Headers({ cookie: primaryCookie }),
+    });
+    expect(listed).toHaveLength(2);
+    expect(listed.map((session) => session.token)).toContain(secondarySession!.session.token);
+
+    await auth.api.revokeSession({
+      headers: new Headers({ cookie: primaryCookie }),
+      body: { token: secondarySession!.session.token },
+    });
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: secondaryCookie }) })).toBeNull();
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: primaryCookie }) })).not.toBeNull();
+
+    const thirdLogin = await auth.api.signInEmail({
+      returnHeaders: true,
+      body: { email: "sessions@example.com", password: originalPassword },
+    });
+    const thirdCookie = cookieFrom(thirdLogin.headers);
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: thirdCookie }) })).not.toBeNull();
+
+    await auth.api.revokeOtherSessions({
+      headers: new Headers({ cookie: primaryCookie }),
+    });
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: primaryCookie }) })).not.toBeNull();
+    expect(await auth.api.getSession({ headers: new Headers({ cookie: thirdCookie }) })).toBeNull();
+
+    const remaining = await auth.api.listSessions({
+      headers: new Headers({ cookie: primaryCookie }),
+    });
+    expect(remaining).toHaveLength(1);
+  });
 });
