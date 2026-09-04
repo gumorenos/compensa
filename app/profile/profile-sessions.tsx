@@ -36,6 +36,7 @@ export function ProfileSessions() {
   const [message, setMessage] = useState<string | null>(null);
 
   const currentToken = currentSession?.session.token ?? null;
+  const sessionIdentityReady = currentToken !== null;
 
   const loadSessions = useCallback(async () => {
     setError(null);
@@ -61,12 +62,15 @@ export function ProfileSessions() {
   }, [loadSessions]);
 
   const otherSessionCount = useMemo(
-    () => sessions.filter((session) => session.token !== currentToken).length,
-    [currentToken, sessions],
+    () =>
+      sessionIdentityReady
+        ? sessions.filter((session) => session.token !== currentToken).length
+        : 0,
+    [currentToken, sessionIdentityReady, sessions],
   );
 
   async function revokeOne(token: string) {
-    if (token === currentToken) return;
+    if (!sessionIdentityReady || token === currentToken) return;
     setBusyToken(token);
     setError(null);
     setMessage(null);
@@ -82,7 +86,7 @@ export function ProfileSessions() {
   }
 
   async function revokeOthers() {
-    if (otherSessionCount === 0) return;
+    if (!sessionIdentityReady || otherSessionCount === 0) return;
     setRevokingOthers(true);
     setError(null);
     setMessage(null);
@@ -111,7 +115,7 @@ export function ProfileSessions() {
           type="button"
           className="button button-secondary button-small"
           onClick={() => void revokeOthers()}
-          disabled={loading || revokingOthers || otherSessionCount === 0}
+          disabled={!sessionIdentityReady || loading || revokingOthers || otherSessionCount === 0}
         >
           {revokingOthers ? "Cerrando…" : "Cerrar otras sesiones"}
         </button>
@@ -127,7 +131,7 @@ export function ProfileSessions() {
       ) : (
         <div className="profile-session-list">
           {sessions.map((session) => {
-            const isCurrent = session.token === currentToken;
+            const isCurrent = sessionIdentityReady && session.token === currentToken;
             return (
               <article className="profile-session-row" key={session.id}>
                 <div className="stack compact-stack">
@@ -141,7 +145,9 @@ export function ProfileSessions() {
                     {session.ipAddress ? <span>IP: {session.ipAddress}</span> : null}
                   </div>
                 </div>
-                {isCurrent ? (
+                {!sessionIdentityReady ? (
+                  <span className="muted profile-session-current">Identificando sesión…</span>
+                ) : isCurrent ? (
                   <span className="muted profile-session-current">En uso</span>
                 ) : (
                   <button
