@@ -59,4 +59,14 @@ describe("user profile UI contract", () => {
     expect(sessions).not.toContain("{session.token}");
     expect(sessions).not.toContain("Token:");
   });
+
+  it("does not expose revocation actions until the current session is identified", async () => {
+    const sessions = await source("app/profile/profile-sessions.tsx");
+    expect(sessions).toContain("const sessionIdentityReady = currentToken !== null");
+    expect(sessions).toContain("if (!sessionIdentityReady || token === currentToken) return");
+    expect(sessions).toContain("if (!sessionIdentityReady || otherSessionCount === 0) return");
+    expect(sessions).toContain("disabled={!sessionIdentityReady || loading");
+    expect(sessions).toContain("Identificando sesión…");
+    expect(sessions).toContain("!sessionIdentityReady ? (");
+  });
 });
