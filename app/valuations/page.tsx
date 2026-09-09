@@ -54,6 +54,14 @@ function dateTime(value: Date): string {
 export default async function ValuationQueuePage({ searchParams }: ValuationQueuePageProps) {
   const data = await getValuationQueuePageData(await searchParams);
   const { filters, queue } = data;
+  const hasAdvancedFilters = Boolean(
+    filters.gradeCode ||
+    filters.jobFamily ||
+    filters.methodologyVersionId ||
+    filters.actorUserId ||
+    filters.dateFrom ||
+    filters.dateTo,
+  );
 
   return (
     <>
@@ -77,7 +85,7 @@ export default async function ValuationQueuePage({ searchParams }: ValuationQueu
         </div>
       )}
 
-      <section aria-labelledby="status-summary-title" style={{ marginBottom: 28 }}>
+      <section className="status-summary" aria-labelledby="status-summary-title">
         <div className="section-head" style={{ marginBottom: 12 }}>
           <div>
             <span className="eyebrow">Estado del trabajo</span>
@@ -102,7 +110,7 @@ export default async function ValuationQueuePage({ searchParams }: ValuationQueu
         </div>
       </section>
 
-      <section className="card card-pad" style={{ marginBottom: 28 }}>
+      <section className="card card-pad filter-card">
         <div className="section-head" style={{ marginBottom: 18 }}>
           <div>
             <span className="eyebrow">Filtros</span>
@@ -115,7 +123,7 @@ export default async function ValuationQueuePage({ searchParams }: ValuationQueu
           <div className="grid grid-3">
             <label>
               <span>Buscar puesto / código</span>
-              <input name="q" defaultValue={filters.query ?? ""} maxLength={200} placeholder="Ej. Planeamiento" />
+              <input type="text" name="q" defaultValue={filters.query ?? ""} maxLength={200} placeholder="Ej. Planeamiento" />
             </label>
             <label>
               <span>Estado</span>
@@ -127,61 +135,66 @@ export default async function ValuationQueuePage({ searchParams }: ValuationQueu
               </select>
             </label>
             <label>
-              <span>Grado</span>
-              <select name="gradeCode" defaultValue={filters.gradeCode ?? ""}>
-                <option value="">Todos</option>
-                {queue.options.gradeCodes.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
-              </select>
-            </label>
-          </div>
-
-          <div className="grid grid-3">
-            <label>
               <span>Área</span>
               <select name="area" defaultValue={filters.area ?? ""}>
                 <option value="">Todas</option>
                 {queue.options.areas.map((area) => <option key={area} value={area}>{area}</option>)}
               </select>
             </label>
-            <label>
-              <span>Familia</span>
-              <select name="jobFamily" defaultValue={filters.jobFamily ?? ""}>
-                <option value="">Todas</option>
-                {queue.options.jobFamilies.map((family) => <option key={family} value={family}>{family}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>Metodología / versión</span>
-              <select name="methodologyVersionId" defaultValue={filters.methodologyVersionId ?? ""}>
-                <option value="">Todas</option>
-                {queue.options.methodologies.map((methodology) => (
-                  <option key={methodology.id} value={methodology.id}>
-                    {methodology.name} v{methodology.version} · {methodology.code}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
 
-          <div className="grid grid-3">
-            <label>
-              <span>Iniciada por</span>
-              <select name="actorUserId" defaultValue={filters.actorUserId ?? ""}>
-                <option value="">Cualquier usuario</option>
-                {queue.options.actors.map((actor) => (
-                  <option key={actor.id} value={actor.id}>{actor.name} · {actor.email}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Actualizada desde (UTC)</span>
-              <input type="date" name="dateFrom" defaultValue={filters.dateFrom ?? ""} />
-            </label>
-            <label>
-              <span>Actualizada hasta (UTC)</span>
-              <input type="date" name="dateTo" defaultValue={filters.dateTo ?? ""} />
-            </label>
-          </div>
+          <details className="filter-details" open={hasAdvancedFilters}>
+            <summary>Más filtros{hasAdvancedFilters ? " · filtros activos" : ""}</summary>
+            <div className="stack filter-details-content">
+              <div className="grid grid-3">
+                <label>
+                  <span>Grado</span>
+                  <select name="gradeCode" defaultValue={filters.gradeCode ?? ""}>
+                    <option value="">Todos</option>
+                    {queue.options.gradeCodes.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Familia</span>
+                  <select name="jobFamily" defaultValue={filters.jobFamily ?? ""}>
+                    <option value="">Todas</option>
+                    {queue.options.jobFamilies.map((family) => <option key={family} value={family}>{family}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Metodología / versión</span>
+                  <select name="methodologyVersionId" defaultValue={filters.methodologyVersionId ?? ""}>
+                    <option value="">Todas</option>
+                    {queue.options.methodologies.map((methodology) => (
+                      <option key={methodology.id} value={methodology.id}>
+                        {methodology.name} v{methodology.version} · {methodology.code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid grid-3">
+                <label>
+                  <span>Iniciada por</span>
+                  <select name="actorUserId" defaultValue={filters.actorUserId ?? ""}>
+                    <option value="">Cualquier usuario</option>
+                    {queue.options.actors.map((actor) => (
+                      <option key={actor.id} value={actor.id}>{actor.name} · {actor.email}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Actualizada desde (UTC)</span>
+                  <input type="date" name="dateFrom" defaultValue={filters.dateFrom ?? ""} />
+                </label>
+                <label>
+                  <span>Actualizada hasta (UTC)</span>
+                  <input type="date" name="dateTo" defaultValue={filters.dateTo ?? ""} />
+                </label>
+              </div>
+            </div>
+          </details>
 
           <div>
             <button className="button" type="submit">Aplicar filtros</button>
