@@ -16,7 +16,7 @@ describe("valuation work queue web contract", () => {
   it("exposes the work queue in role-aware navigation", async () => {
     const navigation = await source("app/app-nav-links.tsx");
     expect(navigation).toContain('href="/valuations"');
-    expect(navigation).toContain(">Valoraciones</Link>");
+    expect(navigation).toContain(">Valoraciones</ActiveNavLink>");
   });
 
   it("provides operational filters and direct links to immutable valuation versions", async () => {
