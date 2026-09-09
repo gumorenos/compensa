@@ -1,0 +1,185 @@
+.valuation-context-nav {
+  min-height: 40px;
+  gap: 20px;
+}
+
+.valuation-tabs {
+  padding: 2px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.valuation-tab {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.valuation-tab.active {
+  background: var(--primary-soft);
+  box-shadow: none;
+}
+
+.valuation-journey {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: -2px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.journey-step {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 10px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.journey-step + .journey-step {
+  border-left: 1px solid var(--line);
+}
+
+.journey-index {
+  width: 22px;
+  height: 22px;
+  font-size: 10px;
+}
+
+.journey-copy strong {
+  font-size: 12px;
+}
+
+.journey-copy small {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.valuation-head {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.valuation-head > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.valuation-head h1 {
+  margin-top: 6px;
+  margin-bottom: 8px;
+  font-size: clamp(30px, 4vw, 40px);
+}
+
+.valuation-head p {
+  margin: 0;
+}
+
+.valuation-head .progress {
+  margin-top: 10px;
+}
+
+.score-box {
+  min-width: 164px;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.score-box strong {
+  font-size: 26px;
+}
+
+.valuation-layout {
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 18px;
+}
+
+.factor {
+  box-shadow: 0 5px 18px rgba(20, 37, 43, 0.06);
+}
+
+.factor-title {
+  padding: 16px 20px;
+}
+
+.dimension {
+  padding: 18px 20px;
+}
+
+.support-block {
+  margin-top: 18px;
+  padding: 15px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.support-editor {
+  margin-top: 12px;
+}
+
+.valuation-layout aside .card {
+  box-shadow: none;
+}
+
+.valuation-layout aside .card-pad {
+  padding: 20px;
+}
+
+.text-button {
+  min-height: 36px;
+  padding: 8px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-button:focus-visible,
+.valuation-tab:focus-visible,
+.valuation-back-link:focus-visible,
+.level-option:focus-visible,
+.details-block > summary:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 3px;
+}
+
+@media (max-width: 800px) {
+  .valuation-head {
+    align-items: stretch;
+  }
+
+  .score-box {
+    min-width: 0;
+  }
+
+  .valuation-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .valuation-journey {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .journey-step {
+    padding: 9px 10px;
+  }
+
+  .journey-step + .journey-step {
+    border-left: 0;
+  }
+
+  .journey-step:nth-child(even) {
+    border-left: 1px solid var(--line);
+  }
+
+  .journey-step:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+}

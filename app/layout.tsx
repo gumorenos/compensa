@@ -5,6 +5,7 @@ import { SessionNav } from "./session-nav.js";
 import "./globals.css";
 import "./workflow.css";
 import "./valuation-navigation.css";
+import "./valuation-refinement.css";
 import "./auth.css";
 
 export const metadata: Metadata = {
