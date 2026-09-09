@@ -5,6 +5,12 @@ import { getAppContext } from "../../src/web/runtime.js";
 
 export const dynamic = "force-dynamic";
 
+const methodologyStatusLabels: Record<string, string> = {
+  ACTIVE: "Activa",
+  INACTIVE: "Inactiva",
+  ARCHIVED: "Archivada",
+};
+
 export default async function MethodologiesPage() {
   const context = await getAppContext("VIEW");
   const service = new MethodologyAdminService(context.pool);
@@ -69,7 +75,7 @@ export default async function MethodologiesPage() {
                     </td>
                     <td>
                       <span className={`badge ${methodology.status === "ACTIVE" ? "badge-success" : "badge-warning"}`}>
-                        {methodology.status}
+                        {methodologyStatusLabels[methodology.status] ?? methodology.status}
                       </span>
                     </td>
                     <td>{methodology.definition.factors.length}</td>

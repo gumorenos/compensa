@@ -13,8 +13,8 @@ describe("operational overview web contract", () => {
 
   it("adds Inicio without replacing the existing Puestos root route", async () => {
     const navigation = await source("app/app-nav-links.tsx");
-    expect(navigation).toContain('href="/overview">Inicio</Link>');
-    expect(navigation).toContain('href="/">Puestos</Link>');
+    expect(navigation).toContain('href="/overview">Inicio</ActiveNavLink>');
+    expect(navigation).toContain('href="/">Puestos</ActiveNavLink>');
   });
 
   it("links operational metrics to the existing work queue instead of creating hidden actions", async () => {
