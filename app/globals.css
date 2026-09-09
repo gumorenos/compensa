@@ -29,6 +29,10 @@ button, input { font: inherit; }
 .brand strong { font-size: 17px; letter-spacing: -0.02em; }
 .brand small { margin-top: 2px; color: var(--muted); font-size: 12px; }
 .nav { display: flex; align-items: center; gap: 18px; font-size: 14px; }
+.nav-link { position: relative; padding: 8px 0; color: var(--text); }
+.nav-link:hover { color: var(--primary); }
+.nav-link.active { color: var(--primary); font-weight: 750; }
+.nav-link.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 2px; border-radius: 999px; background: var(--primary); }
 .main-content { padding: 38px 0 72px; }
 
 .eyebrow { color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -44,6 +48,13 @@ p { line-height: 1.6; }
 .button:hover { filter: brightness(.94); }
 .button-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
 .button-small { padding: 8px 12px; font-size: 13px; }
+.button:focus-visible,
+.nav-link:focus-visible,
+.brand:focus-visible,
+.job-link:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 3px;
+}
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
 .card-pad { padding: 24px; }
@@ -68,8 +79,12 @@ tbody tr:hover { background: #fafcfc; }
 .field { display: grid; gap: 7px; }
 .field-full { grid-column: 1 / -1; }
 label { font-size: 13px; font-weight: 750; }
-input[type="text"] { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--text); outline: none; }
-input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+input:not([type]),
+input[type="text"],
+input[type="date"] { width: 100%; min-height: 42px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--text); outline: none; }
+input:not([type]):focus,
+input[type="text"]:focus,
+input[type="date"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .form-actions { margin-top: 22px; display: flex; gap: 10px; }
 
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 24px; align-items: start; }
