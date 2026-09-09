@@ -3,6 +3,15 @@ import { getAppContext, listDemoJobs } from "../src/web/runtime.js";
 
 export const dynamic = "force-dynamic";
 
+const valuationStatusLabels: Record<string, string> = {
+  DRAFT: "Borrador",
+  IN_REVIEW: "En revisión",
+  RETURNED: "Devuelta",
+  APPROVED: "Aprobada",
+  SUPERSEDED: "Reemplazada",
+  CANCELLED: "Cancelada",
+};
+
 export default async function HomePage() {
   const [context, jobs] = await Promise.all([getAppContext("VIEW"), listDemoJobs()]);
 
@@ -62,7 +71,9 @@ export default async function HomePage() {
                       ) : job.valuationStatus === "APPROVED" ? (
                         <span className="badge badge-success">Aprobada</span>
                       ) : (
-                        <span className="badge badge-warning">{job.valuationStatus}</span>
+                        <span className="badge badge-warning">
+                          {valuationStatusLabels[job.valuationStatus] ?? job.valuationStatus}
+                        </span>
                       )}
                     </td>
                     <td>{job.totalPoints ?? "—"}</td>
