@@ -1,0 +1,155 @@
+.status-summary {
+  margin-bottom: 22px;
+}
+
+.status-summary .grid {
+  gap: 10px;
+}
+
+.status-summary .status-card {
+  min-height: 0;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.status-summary .status-card:hover {
+  transform: none;
+  border-color: #9eb4b8;
+  box-shadow: 0 3px 12px rgba(20, 37, 43, 0.05);
+}
+
+.status-summary .status-card > .badge {
+  justify-self: start;
+}
+
+.status-summary .status-card-count {
+  align-items: center;
+}
+
+.status-summary .status-card-count strong {
+  font-size: 1.65rem;
+}
+
+.status-summary .status-card-count span {
+  max-width: 150px;
+}
+
+.filter-card {
+  margin-bottom: 22px;
+}
+
+.filter-card label {
+  display: grid;
+  gap: 7px;
+}
+
+.filter-details {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.filter-details > summary,
+.ai-limits > summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.filter-details > summary:focus-visible,
+.ai-limits > summary:focus-visible {
+  outline: 3px solid var(--primary-soft);
+  outline-offset: 3px;
+}
+
+.filter-details-content {
+  margin-top: 16px;
+}
+
+[aria-label="Resumen operativo"] {
+  gap: 12px;
+}
+
+[aria-label="Resumen operativo"] .status-card {
+  min-height: 104px;
+  padding: 18px 20px;
+  gap: 10px;
+  box-shadow: 0 5px 18px rgba(20, 37, 43, 0.05);
+}
+
+[aria-label="Resumen operativo"] .status-card-count strong {
+  font-size: 1.75rem;
+}
+
+.ai-limits {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ai-limits > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  color: var(--text);
+  list-style: none;
+}
+
+.ai-limits > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-limits > summary::after {
+  content: "+";
+  color: var(--muted);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.ai-limits[open] > summary::after {
+  content: "−";
+}
+
+.ai-limits-title .eyebrow,
+.ai-limits-title strong {
+  display: block;
+}
+
+.ai-limits-title strong {
+  margin-top: 4px;
+  font-size: 17px;
+}
+
+.ai-limits-content {
+  padding: 0 24px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.ai-limits-content ul {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .status-summary .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .status-summary .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [aria-label="Resumen operativo"] .status-card {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-summary .grid {
+    grid-template-columns: 1fr;
+  }
+}

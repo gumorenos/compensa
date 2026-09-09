@@ -6,6 +6,7 @@ import "./globals.css";
 import "./workflow.css";
 import "./valuation-navigation.css";
 import "./valuation-refinement.css";
+import "./dashboard-refinement.css";
 import "./auth.css";
 
 export const metadata: Metadata = {
