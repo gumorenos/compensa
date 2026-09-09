@@ -31,6 +31,6 @@ describe("Internal comparables web contract", () => {
   it("links comparables from the authenticated role-aware navigation", async () => {
     const nav = await source("app/app-nav-links.tsx");
     expect(nav).toContain('href="/comparables"');
-    expect(nav).toContain(">Comparar</Link>");
+    expect(nav).toContain(">Comparar</ActiveNavLink>");
   });
 });
