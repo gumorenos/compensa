@@ -90,16 +90,22 @@ export default async function AIAssistanceGovernancePage() {
         </div>
       </section>
 
-      <section className="card card-pad">
-        <span className="eyebrow">Límites vigentes</span>
-        <h2 style={{ marginTop: 6 }}>Lo que esta configuración no hace</h2>
-        <ul>
-          <li>No conecta un modelo ni almacena API keys.</li>
-          <li>No cambia puntos, grado, metodología ni estado de una valoración.</li>
-          <li>No da acceso al Gold Standard, HOLDOUT o calibración a la IA.</li>
-          <li>No sustituye la aceptación, modificación o rechazo explícito por una persona.</li>
-        </ul>
-      </section>
+      <details className="card ai-limits">
+        <summary>
+          <span className="ai-limits-title">
+            <span className="eyebrow">Límites vigentes</span>
+            <strong>Seguridad y límites de esta configuración</strong>
+          </span>
+        </summary>
+        <div className="ai-limits-content">
+          <ul>
+            <li>No conecta un modelo ni almacena API keys.</li>
+            <li>No cambia puntos, grado, metodología ni estado de una valoración.</li>
+            <li>No da acceso al Gold Standard, HOLDOUT o calibración a la IA.</li>
+            <li>No sustituye la aceptación, modificación o rechazo explícito por una persona.</li>
+          </ul>
+        </div>
+      </details>
     </div>
   );
 }
