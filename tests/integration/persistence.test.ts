@@ -44,7 +44,7 @@ describe("PostgreSQL persistence", () => {
       "SELECT name, checksum FROM schema_migrations ORDER BY name",
     );
 
-    expect(result.rows).toHaveLength(9);
+    expect(result.rows).toHaveLength(10);
     expect(result.rows.map((row) => row.name)).toEqual([
       "0001_core.sql",
       "0002_descriptions_evidence_review.sql",
@@ -55,6 +55,7 @@ describe("PostgreSQL persistence", () => {
       "0007_ai_assistance.sql",
       "0008_ai_human_resolution.sql",
       "0009_ai_tenant_governance.sql",
+      "0010_ai_provider_configuration.sql",
     ]);
     for (const row of result.rows) {
       expect(row.checksum).toMatch(/^[a-f0-9]{64}$/);
