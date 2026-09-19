@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AIAssistanceGovernancePage() {
   const data = await getAIGovernancePageData();
-  const { settings } = data;
+  const { settings, externalProvider } = data;
 
   return (
     <div className="stack">
@@ -90,6 +90,56 @@ export default async function AIAssistanceGovernancePage() {
         </div>
       </section>
 
+      <section className="card card-pad stack">
+        <div>
+          <span className="eyebrow">Proveedor externo</span>
+          <h2 style={{ marginTop: 6 }}>Preparación de configuración</h2>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Estado del metadato de despliegue para un futuro adapter externo. Esta superficie no
+            resuelve credenciales, no prueba conexiones y no habilita tráfico.
+          </p>
+        </div>
+
+        <div className="stack compact-stack">
+          <p style={{ margin: 0 }}>
+            <strong>Estado:</strong> {configurationStateLabel(externalProvider.state)}
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Proveedor:</strong> <code>{externalProvider.providerId ?? "—"}</code>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Servicio:</strong> <code>{externalProvider.serviceId ?? "—"}</code>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Modelo:</strong> <code>{externalProvider.modelId ?? "—"}</code>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Referencia de secreto:</strong>{" "}
+            {externalProvider.secretReferenceConfigured
+              ? "Configurada y oculta."
+              : "No configurada."}
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Allowlist:</strong>{" "}
+            {externalProvider.allowlisted ? "Proveedor permitido." : "Sin autorización efectiva."}
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Adapter de red:</strong> No implementado.
+          </p>
+        </div>
+
+        {externalProvider.issues.length > 0 ? (
+          <div className="notice">
+            <strong>La configuración externa no es utilizable.</strong>
+            <ul style={{ margin: 0 }}>
+              {externalProvider.issues.map((issue) => (
+                <li key={issue}>{configurationIssueLabel(issue)}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
+
       <details className="card ai-limits">
         <summary>
           <span className="ai-limits-title">
@@ -108,4 +158,29 @@ export default async function AIAssistanceGovernancePage() {
       </details>
     </div>
   );
+}
+
+function configurationStateLabel(state: string): string {
+  if (state === "CONFIGURED") return "Metadatos completos; adapter todavía no disponible.";
+  if (state === "INVALID") return "Configuración incompleta o inválida.";
+  return "No configurado.";
+}
+
+function configurationIssueLabel(issue: string): string {
+  switch (issue) {
+    case "PARTIAL_CONFIGURATION":
+      return "Faltan uno o más campos de provider, service, model o referencia de secreto.";
+    case "INVALID_PROVIDER_ID":
+      return "El identificador del proveedor no tiene un formato permitido.";
+    case "INVALID_SERVICE_ID":
+      return "El identificador del servicio no tiene un formato permitido.";
+    case "INVALID_MODEL_ID":
+      return "El identificador del modelo contiene caracteres no permitidos.";
+    case "INVALID_SECRET_REFERENCE":
+      return "La referencia de secreto debe usar el formato env:VARIABLE_NAME; no una API key.";
+    case "PROVIDER_NOT_ALLOWLISTED":
+      return "El proveedor no está incluido en la allowlist del despliegue.";
+    default:
+      return "La configuración externa contiene un valor no válido.";
+  }
 }
