@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 
 export interface AIProviderConfiguration {
   organizationId: string;
@@ -189,7 +189,7 @@ function validateConfiguration(
 }
 
 async function requireActiveOrganization(
-  client: { query: Pool["query"] },
+  client: Pick<PoolClient, "query">,
   organizationId: string,
 ): Promise<void> {
   const organization = await client.query(
@@ -221,7 +221,7 @@ function mapConfiguration(
 }
 
 async function safeRollback(
-  client: { query: Pool["query"] },
+  client: Pick<PoolClient, "query">,
 ): Promise<void> {
   try {
     await client.query("ROLLBACK");
