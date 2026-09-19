@@ -1,3 +1,7 @@
+import {
+  getExternalAIProviderConfigurationStatus,
+  type ExternalAIProviderConfigurationStatus,
+} from "../ai/external-provider-config.js";
 import { AIGovernanceService, type AIAssistanceSettings } from "../application/ai-governance-service.js";
 import { getAppContext } from "./runtime.js";
 
@@ -7,6 +11,7 @@ export interface AIGovernancePageData {
     name: string;
   };
   settings: AIAssistanceSettings;
+  externalProvider: ExternalAIProviderConfigurationStatus;
 }
 
 export async function getAIGovernancePageData(): Promise<AIGovernancePageData> {
@@ -20,5 +25,6 @@ export async function getAIGovernancePageData(): Promise<AIGovernancePageData> {
       name: context.organization.name,
     },
     settings,
+    externalProvider: getExternalAIProviderConfigurationStatus(),
   };
 }
