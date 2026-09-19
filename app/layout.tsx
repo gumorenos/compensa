@@ -8,10 +8,12 @@ import "./valuation-navigation.css";
 import "./valuation-refinement.css";
 import "./dashboard-refinement.css";
 import "./auth.css";
+import "./mobile-overflow-fix.css";
 
 export const metadata: Metadata = {
   title: "Compensa",
   description: "Valoración de puestos trazable y determinística",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
