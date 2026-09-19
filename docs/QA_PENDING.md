@@ -1,8 +1,19 @@
 # Compensa — QA pendiente
 
-Actualizado: 2026-08-30
+Actualizado: 2026-09-19
 
 Este archivo es el inventario único de validaciones conocidas que **todavía no cubre el CI automatizado**. Deben ejecutarse antes de considerar Compensa listo para usuarios externos/producción. Si una prueba pasa posteriormente, debe moverse fuera de las secciones pendientes en el mismo cambio que la automatiza o documenta.
+
+## Pendiente inmediato: redeploy y QA del refinamiento UI
+
+- Desplegar en staging el merge aprobado `f938fc05c7122095cdac5c49e8390822a8443a70` cuando vuelva a estar disponible el acceso operativo a OpenClaw.
+- Confirmar que staging pasa de `71b2f52194d4bd0b9b809a97afdaf927cfdec872` al SHA anterior sin ejecutar bootstrap, demo seed ni borrar volúmenes.
+- Repetir QA autenticado en desktop 1440×900 y móvil 390×844 sobre `/overview`, `/`, `/valuations`, una valoración existente, `/methodologies` y `/ai-assistance`.
+- En móvil confirmar `document.documentElement.scrollWidth === document.documentElement.clientWidth`; navegación y tablas pueden tener scroll horizontal propio, pero no deben ensanchar el documento.
+- Confirmar `/favicon.svg` HTTP 200 y consola sin 404/errores nuevos.
+- Mantener GitHub issue #39 abierto hasta que estas comprobaciones pasen sobre el SHA desplegado.
+- El CI #743 ya cubre automáticamente las seis rutas a 390×844 y falla ante overflow global o respuestas 4xx/5xx del mismo origen; el pendiente es la validación del entorno real de staging.
+
 
 ## Cubierto automáticamente en CI
 
