@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getExternalAIProviderConfigurationStatus } from "../src/ai/external-provider-config.js";
+import { getAIAssistanceProviderBinding } from "../src/ai/provider-binding.js";
 
 describe("external AI provider configuration boundary", () => {
   it("is default-deny when no external provider metadata is configured", () => {
@@ -37,6 +38,19 @@ describe("external AI provider configuration boundary", () => {
     });
     expect(JSON.stringify(status)).not.toContain("COMPENSA_AI_PROVIDER_KEY");
     expect(JSON.stringify(status)).not.toContain("must-never-be-read");
+  });
+
+  it("does not silently bind an external provider even when metadata is complete", () => {
+    const environment = {
+      COMPENSA_AI_EXTERNAL_ALLOWED_PROVIDERS: "provider-a",
+      COMPENSA_AI_EXTERNAL_PROVIDER_ID: "provider-a",
+      COMPENSA_AI_EXTERNAL_SERVICE_ID: "responses",
+      COMPENSA_AI_EXTERNAL_MODEL_ID: "model-1",
+      COMPENSA_AI_EXTERNAL_SECRET_REF: "env:COMPENSA_AI_PROVIDER_KEY",
+    };
+
+    expect(getExternalAIProviderConfigurationStatus(environment).state).toBe("CONFIGURED");
+    expect(getAIAssistanceProviderBinding(environment)).toBeNull();
   });
 
   it("fails closed for partial or non-allowlisted configuration", () => {
