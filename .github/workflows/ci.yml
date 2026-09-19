@@ -36,6 +36,13 @@ jobs:
           node-version: 22
       - name: Install dependencies from lockfile
         run: npm ci
+      - name: Verify lockfile is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts
+          git diff -- package.json package-lock.json
+          git diff --exit-code -- package.json package-lock.json
       - name: Dependency security audit
         run: npm audit --audit-level=high
       - name: Typecheck
