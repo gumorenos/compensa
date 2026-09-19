@@ -29,7 +29,7 @@ export default async function AIAssistanceGovernancePage() {
         <span>
           Activar estas opciones no envía descriptivos, valoraciones ni evidencia fuera de
           Compensa. Puedes registrar metadata del proveedor sin habilitar tráfico; la autorización
-          de procesamiento externo sigue siendo un requisito separado de gobernanza.
+          de procesamiento externo sigue siendo un requisito separado de gobernanza y esta metadata no habilita tráfico por sí misma.
         </span>
       </div>
 
