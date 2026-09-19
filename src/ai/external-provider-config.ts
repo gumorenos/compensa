@@ -84,7 +84,7 @@ export function getExternalAIProviderConfigurationStatus(
     providerId,
     serviceId,
     modelId,
-    secretReferenceConfigured: secretRef !== null,
+    secretReferenceConfigured: secretRef !== null && SECRET_REF_PATTERN.test(secretRef),
     allowlisted,
     adapterAvailable: false,
     issues: [...new Set(issues)],
