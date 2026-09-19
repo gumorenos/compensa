@@ -63,6 +63,7 @@ describe("external AI provider configuration boundary", () => {
 
     expect(status.state).toBe("INVALID");
     expect(status.issues).toContain("INVALID_SECRET_REFERENCE");
+    expect(status.secretReferenceConfigured).toBe(false);
     expect(JSON.stringify(status)).not.toContain(literalCredential);
   });
 
