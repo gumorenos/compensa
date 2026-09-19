@@ -45,6 +45,10 @@ interface CdpMessage {
     request?: {
       url?: string;
     };
+    response?: {
+      url?: string;
+      status?: number;
+    };
   };
   result?: unknown;
   error?: { message?: string };
@@ -70,6 +74,7 @@ class CdpPage {
   private nextId = 1;
   private readonly pending = new Map<number, PendingCommand>();
   private readonly observedRequestUrls = new Set<string>();
+  private readonly observedHttpErrors = new Map<string, number>();
 
   private constructor(private readonly socket: WebSocket) {
     this.socket.addEventListener("message", (event) => {
@@ -77,6 +82,13 @@ class CdpPage {
       if (message.method === "Network.requestWillBeSent") {
         const url = message.params?.request?.url;
         if (url !== undefined) this.observedRequestUrls.add(url);
+      }
+      if (message.method === "Network.responseReceived") {
+        const url = message.params?.response?.url;
+        const status = message.params?.response?.status;
+        if (url !== undefined && status !== undefined && status >= 400) {
+          this.observedHttpErrors.set(url, status);
+        }
       }
 
       if (message.id === undefined) return;
@@ -148,6 +160,39 @@ class CdpPage {
         }
       })
       .sort();
+  }
+
+  sameOriginHttpErrors(allowedOrigin: string): string[] {
+    return [...this.observedHttpErrors.entries()]
+      .filter(([url]) => {
+        try {
+          return new URL(url).origin === allowedOrigin;
+        } catch {
+          return false;
+        }
+      })
+      .map(([url, status]) => `${status} ${url}`)
+      .sort();
+  }
+
+  async setViewport(width: number, height: number): Promise<void> {
+    await this.command("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+  }
+
+  async assertNoHorizontalPageOverflow(label: string): Promise<void> {
+    const metrics = await this.evaluate<{ clientWidth: number; scrollWidth: number }>(`({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    })`);
+    assert.ok(
+      metrics.scrollWidth <= metrics.clientWidth + 1,
+      `${label}: horizontal page overflow (clientWidth=${metrics.clientWidth}, scrollWidth=${metrics.scrollWidth})`,
+    );
   }
 
   async navigate(path: string): Promise<void> {
@@ -275,7 +320,24 @@ const page = await CdpPage.connect();
 const pool = createPool(databaseUrl);
 
 try {
+  await page.setViewport(1440, 900);
   await page.login(fixture.users.admin, "/ai-assistance");
+
+  await page.setViewport(390, 844);
+  for (const path of [
+    "/overview",
+    "/",
+    "/valuations",
+    `/valuations/${fixture.valuationId}`,
+    "/methodologies",
+    "/ai-assistance",
+  ]) {
+    await page.navigate(path);
+    await page.assertNoHorizontalPageOverflow(`mobile ${path}`);
+  }
+  await page.setViewport(1440, 900);
+  await page.navigate("/ai-assistance");
+
   await page.waitForText("No existe configuración previa");
   assert.equal(await page.isChecked('input[name="assistanceEnabled"]'), false);
   assert.equal(await page.isChecked('input[name="externalProcessingAllowed"]'), false);
@@ -311,6 +373,7 @@ try {
   assert.equal(await page.hasVisibleText("Rechazar sugerencia"), false);
 
   assert.deepEqual(page.unexpectedHttpRequests(new URL(baseUrl).origin), []);
+  assert.deepEqual(page.sameOriginHttpErrors(new URL(baseUrl).origin), []);
 
   const settings = await pool.query(
     `SELECT assistance_enabled, external_processing_allowed, updated_by_user_id
@@ -394,6 +457,7 @@ try {
   console.error(`Browser URL at failure: ${await page.currentUrl().catch(() => "unavailable")}`);
   console.error(`Browser body at failure:\n${await page.bodyText().catch(() => "unavailable")}`);
   console.error(`Observed HTTP(S) requests:\n${page.unexpectedHttpRequests(new URL(baseUrl).origin).join("\n")}`);
+  console.error(`Observed same-origin HTTP errors:\n${page.sameOriginHttpErrors(new URL(baseUrl).origin).join("\n")}`);
   throw error;
 } finally {
   await pool.end();
