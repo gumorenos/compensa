@@ -1,0 +1,68 @@
+.shell,
+.main-content,
+.topbar-inner,
+.nav,
+.session-nav,
+.card,
+.table-wrap,
+.grid > *,
+.detail-grid > *,
+.valuation-layout > *,
+.page-head > *,
+.section-head > *,
+.valuation-head > *,
+.valuation-context-nav > * {
+  min-width: 0;
+}
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 700px) {
+  .topbar-inner {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 0 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .brand {
+    justify-self: start;
+    min-width: 0;
+  }
+
+  .nav {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 14px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 2px 7px;
+    scrollbar-width: thin;
+  }
+
+  .nav > a,
+  .nav > .session-nav {
+    flex: 0 0 auto;
+  }
+
+  .session-nav {
+    margin-left: 0;
+    padding-left: 10px;
+  }
+}
+
+@media (max-width: 560px) {
+  .nav > a:first-child {
+    display: inline-flex;
+  }
+}
