@@ -4,20 +4,22 @@ Actualizado: 2026-09-19
 
 Este archivo es el inventario único de validaciones conocidas que **todavía no cubre el CI automatizado**. Deben ejecutarse antes de considerar Compensa listo para usuarios externos/producción. Si una prueba pasa posteriormente, debe moverse fuera de las secciones pendientes en el mismo cambio que la automatiza o documenta.
 
-## Pendiente inmediato: redeploy y QA del refinamiento UI
+## Pendiente inmediato: redeploy y QA acumulado de staging
 
-- Desplegar en staging el merge aprobado `f938fc05c7122095cdac5c49e8390822a8443a70` cuando vuelva a estar disponible el acceso operativo a OpenClaw.
-- Confirmar que staging pasa de `71b2f52194d4bd0b9b809a97afdaf927cfdec872` al SHA anterior sin ejecutar bootstrap, demo seed ni borrar volúmenes.
+- Staging sigue verificado en `71b2f52194d4bd0b9b809a97afdaf927cfdec872`. Mientras no exista acceso operativo a OpenClaw, acumular cambios únicamente después de CI completo y no afirmar que están desplegados.
+- Cuando vuelva el acceso, desplegar el **último SHA aprobado de `main`** en un solo salto, registrando el SHA exacto antes de ejecutar. No usar un SHA intermedio solo porque aparezca en este documento.
+- El despliegue debe preservar PostgreSQL y datos existentes: backup validado, migraciones idempotentes, sin bootstrap, demo seed ni borrado de volúmenes.
 - Repetir QA autenticado en desktop 1440×900 y móvil 390×844 sobre `/overview`, `/`, `/valuations`, una valoración existente, `/methodologies` y `/ai-assistance`.
 - En móvil confirmar `document.documentElement.scrollWidth === document.documentElement.clientWidth`; navegación y tablas pueden tener scroll horizontal propio, pero no deben ensanchar el documento.
-- Confirmar `/favicon.svg` HTTP 200 y consola sin 404/errores nuevos.
-- Mantener GitHub issue #39 abierto hasta que estas comprobaciones pasen sobre el SHA desplegado.
-- El CI #743 ya cubre automáticamente las seis rutas a 390×844 y falla ante overflow global o respuestas 4xx/5xx del mismo origen; el pendiente es la validación del entorno real de staging.
+- Confirmar `/favicon.svg` HTTP 200, consola sin 404/errores nuevos y revisar visualmente cualquier funcionalidad añadida desde el último staging.
+- Mantener GitHub issue #39 abierto hasta que las comprobaciones responsive pasen sobre el SHA realmente desplegado.
+- El CI cubre automáticamente las seis rutas a 390×844 y falla ante overflow global o respuestas 4xx/5xx del mismo origen; el pendiente es la validación del entorno real.
 
 
 ## Cubierto automáticamente en CI
 
 - Instalación reproducible con `package-lock.json` + `npm ci` en CI y Docker.
+- Auditoría de dependencias con `npm audit --audit-level=high`; vulnerabilidades high/critical bloquean CI.
 - TypeScript estricto y build de producción Next.js.
 - Motor determinístico, traza y DSL restringido.
 - Migraciones PostgreSQL desde cero, checksums e idempotencia.
