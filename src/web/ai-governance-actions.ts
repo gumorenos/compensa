@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { AIProviderConfigurationService } from "../application/ai-provider-configuration-service.js";
 import { AIGovernanceService } from "../application/ai-governance-service.js";
 import { getAppContext } from "./runtime.js";
 
@@ -19,4 +20,29 @@ export async function updateAIGovernanceAction(formData: FormData): Promise<void
   });
 
   revalidatePath("/ai-assistance");
+}
+
+export async function updateAIProviderConfigurationAction(formData: FormData): Promise<void> {
+  const context = await getAppContext("MANAGE_AI_ASSISTANCE");
+  const service = new AIProviderConfigurationService(context.pool);
+
+  await service.saveConfiguration(context.organization.id, context.access.user.id, {
+    providerId: formValue(formData, "providerId"),
+    modelId: formValue(formData, "modelId"),
+    credentialReference: formValue(formData, "credentialReference"),
+  });
+
+  revalidatePath("/ai-assistance");
+}
+
+export async function clearAIProviderConfigurationAction(): Promise<void> {
+  const context = await getAppContext("MANAGE_AI_ASSISTANCE");
+  const service = new AIProviderConfigurationService(context.pool);
+  await service.clearConfiguration(context.organization.id, context.access.user.id);
+  revalidatePath("/ai-assistance");
+}
+
+function formValue(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
 }
