@@ -1,3 +1,7 @@
+import {
+  AIProviderConfigurationService,
+  type AIProviderConfiguration,
+} from "../application/ai-provider-configuration-service.js";
 import { AIGovernanceService, type AIAssistanceSettings } from "../application/ai-governance-service.js";
 import { getAppContext } from "./runtime.js";
 
@@ -7,12 +11,17 @@ export interface AIGovernancePageData {
     name: string;
   };
   settings: AIAssistanceSettings;
+  providerConfiguration: AIProviderConfiguration | null;
 }
 
 export async function getAIGovernancePageData(): Promise<AIGovernancePageData> {
   const context = await getAppContext("MANAGE_AI_ASSISTANCE");
-  const service = new AIGovernanceService(context.pool);
-  const settings = await service.getSettings(context.organization.id);
+  const governanceService = new AIGovernanceService(context.pool);
+  const providerConfigurationService = new AIProviderConfigurationService(context.pool);
+  const [settings, providerConfiguration] = await Promise.all([
+    governanceService.getSettings(context.organization.id),
+    providerConfigurationService.getConfiguration(context.organization.id),
+  ]);
 
   return {
     organization: {
@@ -20,5 +29,6 @@ export async function getAIGovernancePageData(): Promise<AIGovernancePageData> {
       name: context.organization.name,
     },
     settings,
+    providerConfiguration,
   };
 }
